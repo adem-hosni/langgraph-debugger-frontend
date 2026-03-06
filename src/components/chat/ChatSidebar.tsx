@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 interface ChatSidebarProps {
   open: boolean;
   onSettingsOpen: () => void;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   onThemeToggle: () => void;
 }
 
