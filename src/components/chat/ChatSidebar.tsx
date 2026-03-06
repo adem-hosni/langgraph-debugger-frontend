@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Settings, Moon, Sun } from "lucide-react";
+import { Plus, MessageSquare, Settings, Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { chatSessions, type ChatSession } from "@/lib/mock-data";
