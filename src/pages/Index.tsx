@@ -14,7 +14,7 @@ const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [model, setModel] = useState("gpt-4o");
-  const { theme, toggle: toggleTheme } = useTheme();
+  const { theme, resolved, cycle: toggleTheme } = useTheme();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">

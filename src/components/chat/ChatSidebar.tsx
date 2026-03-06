@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Settings, Moon, Sun } from "lucide-react";
+import { Plus, MessageSquare, Settings, Moon, Sun, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { chatSessions, type ChatSession } from "@/lib/mock-data";
@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 interface ChatSidebarProps {
   open: boolean;
   onSettingsOpen: () => void;
-  theme: "light" | "dark";
+  theme: "light" | "dark" | "system";
   onThemeToggle: () => void;
 }
 
@@ -52,7 +52,7 @@ export function ChatSidebar({ open, onSettingsOpen, theme, onThemeToggle }: Chat
 
       <div className="p-3 border-t border-sidebar-border flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent" onClick={onThemeToggle}>
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : theme === "light" ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
         </Button>
         <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent" onClick={onSettingsOpen}>
           <Settings className="h-4 w-4" />

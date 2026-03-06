@@ -1,23 +1,41 @@
 import { useState, useEffect } from "react";
 
+type Theme = "light" | "dark" | "system";
+
+function getSystemTheme(): "light" | "dark" {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme: Theme) {
+  const resolved = theme === "system" ? getSystemTheme() : theme;
+  document.documentElement.classList.toggle("dark", resolved === "dark");
+}
+
 export function useTheme() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
+  const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window !== "undefined") {
-      return document.documentElement.classList.contains("dark") ? "dark" : "light";
+      return (localStorage.getItem("theme") as Theme) || "system";
     }
-    return "dark";
+    return "system";
   });
 
   useEffect(() => {
-    const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    applyTheme(theme);
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
-  const toggle = () => setTheme((t) => (t === "dark" ? "light" : "dark"));
+  useEffect(() => {
+    if (theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => applyTheme("system");
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, [theme]);
 
-  return { theme, toggle };
+  const resolved = theme === "system" ? getSystemTheme() : theme;
+
+  const cycle = () =>
+    setTheme((t) => (t === "system" ? "light" : t === "light" ? "dark" : "system"));
+
+  return { theme, resolved, cycle };
 }
