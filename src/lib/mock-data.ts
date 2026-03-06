@@ -1,6 +1,7 @@
 export interface Attachment {
   name: string;
-  type: "code" | "data" | "image";
+  type: "code" | "data" | "image" | "document";
+  size?: string;
 }
 
 export interface ToolCall {
@@ -25,24 +26,38 @@ export interface ChatSession {
   id: string;
   title: string;
   date: string;
-  active?: boolean;
+  messages: ChatMessage[];
 }
 
-export const chatSessions: ChatSession[] = [
-  { id: "1", title: "Analyze index.js code", date: "Today", active: true },
-  { id: "2", title: "React performance tips", date: "Today" },
-  { id: "3", title: "Database schema design", date: "Yesterday" },
-  { id: "4", title: "CSS Grid layout help", date: "Yesterday" },
-  { id: "5", title: "API authentication flow", date: "Mar 3" },
-  { id: "6", title: "Docker deployment setup", date: "Mar 2" },
+export interface AIModel {
+  value: string;
+  label: string;
+  custom?: boolean;
+}
+
+export type ChatMode = "default" | "thinking" | "research" | "creative" | "concise";
+
+export const chatModes: { value: ChatMode; label: string; description: string }[] = [
+  { value: "default", label: "Default", description: "Balanced responses" },
+  { value: "thinking", label: "Deep Thinking", description: "Step-by-step reasoning" },
+  { value: "research", label: "Research", description: "In-depth analysis with sources" },
+  { value: "creative", label: "Creative", description: "Imaginative and expressive" },
+  { value: "concise", label: "Concise", description: "Brief and to the point" },
 ];
 
-export const mockConversation: ChatMessage[] = [
+export const defaultModels: AIModel[] = [
+  { value: "gpt-4o", label: "GPT-4o" },
+  { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
+  { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
+  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+];
+
+const demoMessages: ChatMessage[] = [
   {
     id: "1",
     role: "user",
     content: "Can you analyze this code file and search for any recent updates to the Express.js framework that might affect it?",
-    attachments: [{ name: "index.js", type: "code" }],
+    attachments: [{ name: "index.js", type: "code", size: "2.4 KB" }],
     timestamp: "2:34 PM",
   },
   {
@@ -134,9 +149,11 @@ Looking at the Express.js changelog, v5.0 was released recently with significant
   },
 ];
 
-export const models = [
-  { value: "gpt-4o", label: "GPT-4o" },
-  { value: "claude-3.5-sonnet", label: "Claude 3.5 Sonnet" },
-  { value: "gemini-1.5-pro", label: "Gemini 1.5 Pro" },
-  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
+export const initialSessions: ChatSession[] = [
+  { id: "1", title: "Analyze index.js code", date: "Today", messages: demoMessages },
+  { id: "2", title: "React performance tips", date: "Today", messages: [] },
+  { id: "3", title: "Database schema design", date: "Yesterday", messages: [] },
+  { id: "4", title: "CSS Grid layout help", date: "Yesterday", messages: [] },
+  { id: "5", title: "API authentication flow", date: "Mar 3", messages: [] },
+  { id: "6", title: "Docker deployment setup", date: "Mar 2", messages: [] },
 ];
