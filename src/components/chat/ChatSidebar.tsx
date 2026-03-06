@@ -1,8 +1,9 @@
-import { Plus, MessageSquare, Settings, Moon, Sun, Monitor } from "lucide-react";
+import { Plus, MessageSquare, Settings, Moon, Sun, Monitor, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { chatSessions, type ChatSession } from "@/lib/mock-data";
+import { useChatContext } from "@/hooks/use-chat";
 import { cn } from "@/lib/utils";
+import type { ChatSession } from "@/lib/mock-data";
 
 interface ChatSidebarProps {
   open: boolean;
@@ -12,9 +13,11 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({ open, onSettingsOpen, theme, onThemeToggle }: ChatSidebarProps) {
+  const { sessions, activeSessionId, switchSession, createNewChat } = useChatContext();
+
   if (!open) return null;
 
-  const grouped = chatSessions.reduce<Record<string, ChatSession[]>>((acc, s) => {
+  const grouped = sessions.reduce<Record<string, ChatSession[]>>((acc, s) => {
     (acc[s.date] ??= []).push(s);
     return acc;
   }, {});
@@ -22,22 +25,27 @@ export function ChatSidebar({ open, onSettingsOpen, theme, onThemeToggle }: Chat
   return (
     <aside className="w-64 shrink-0 flex flex-col bg-sidebar border-r border-sidebar-border h-screen">
       <div className="p-3">
-        <Button variant="outline" className="w-full justify-start gap-2 bg-sidebar hover:bg-sidebar-accent">
+        <Button
+          variant="outline"
+          className="w-full justify-start gap-2 bg-sidebar hover:bg-sidebar-accent"
+          onClick={createNewChat}
+        >
           <Plus className="h-4 w-4" />
           <span className="text-sm font-medium">New Chat</span>
         </Button>
       </div>
 
       <ScrollArea className="flex-1 px-2 scrollbar-thin">
-        {Object.entries(grouped).map(([date, sessions]) => (
+        {Object.entries(grouped).map(([date, chats]) => (
           <div key={date} className="mb-4">
             <p className="px-3 py-1 text-xs font-medium text-muted-foreground">{date}</p>
-            {sessions.map((s) => (
+            {chats.map((s) => (
               <button
                 key={s.id}
+                onClick={() => switchSession(s.id)}
                 className={cn(
                   "w-full text-left px-3 py-2 rounded-lg text-sm truncate transition-colors",
-                  s.active
+                  s.id === activeSessionId
                     ? "bg-sidebar-accent text-sidebar-accent-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                 )}
