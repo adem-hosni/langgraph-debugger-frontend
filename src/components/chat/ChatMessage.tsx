@@ -1,4 +1,4 @@
-import { Bot, User, FileCode, FileSpreadsheet } from "lucide-react";
+import { Bot, User, FileCode, FileSpreadsheet, FileImage, File } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ToolCallBlock } from "./ToolCallBlock";
@@ -6,7 +6,7 @@ import { MarkdownRenderer } from "./MarkdownRenderer";
 import type { ChatMessage as ChatMessageType } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
-const fileIcons = { code: FileCode, data: FileSpreadsheet, image: FileCode };
+const fileIcons = { code: FileCode, data: FileSpreadsheet, image: FileImage, document: File };
 
 export function ChatMessage({ message }: { message: ChatMessageType }) {
   const isUser = message.role === "user";
