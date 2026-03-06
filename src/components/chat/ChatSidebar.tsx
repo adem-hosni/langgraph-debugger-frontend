@@ -52,7 +52,8 @@ export function ChatSidebar({ open, onSettingsOpen, theme, onThemeToggle }: Chat
 
       <div className="p-3 border-t border-sidebar-border flex items-center gap-1">
         <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent" onClick={onThemeToggle}>
-          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : theme === "light" ? <Moon className="h-4 w-4" /> : <Monitor className="h-4 w-4" />}
+        </Button>
         </Button>
         <Button variant="ghost" size="icon" className="h-9 w-9 text-sidebar-foreground hover:bg-sidebar-accent" onClick={onSettingsOpen}>
           <Settings className="h-4 w-4" />
