@@ -65,7 +65,12 @@ function ChatApp() {
         {/* Main Content */}
         {activeView === "chat" ? (
           <>
-            {activeSession.messages.length === 0 ? (
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading conversations...</span>
+              </div>
+            ) : activeSession.messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center space-y-3">
                   <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center">
