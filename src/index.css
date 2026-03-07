@@ -112,3 +112,14 @@
     border-radius: 3px;
   }
 }
+
+/* React Flow theme overrides */
+.react-flow__node {
+  cursor: pointer;
+}
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+.react-flow__controls button {
+  border-radius: calc(var(--radius) - 4px);
+}
