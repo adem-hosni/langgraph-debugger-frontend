@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Loader2 } from "lucide-react";
 import { Paperclip, ArrowUp, X, FileCode, FileSpreadsheet, FileImage, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
