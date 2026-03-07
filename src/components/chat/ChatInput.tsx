@@ -154,10 +154,10 @@ export function ChatInput() {
             <Button
               size="icon"
               className="h-8 w-8 shrink-0 rounded-lg"
-              disabled={!text.trim() && files.length === 0}
+              disabled={isSending || (!text.trim() && files.length === 0)}
               onClick={handleSend}
             >
-              <ArrowUp className="h-4 w-4" />
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
             </Button>
           </div>
 
