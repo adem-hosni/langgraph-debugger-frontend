@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PanelLeftClose, PanelLeft, MessageSquare, Rocket } from "lucide-react";
+import { PanelLeftClose, PanelLeft, MessageSquare, Rocket, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -17,7 +17,7 @@ function ChatApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "graph">("chat");
   const { theme, cycle: toggleTheme } = useTheme();
-  const { activeSession } = useChatContext();
+  const { activeSession, isLoading } = useChatContext();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
@@ -65,7 +65,12 @@ function ChatApp() {
         {/* Main Content */}
         {activeView === "chat" ? (
           <>
-            {activeSession.messages.length === 0 ? (
+            {isLoading ? (
+              <div className="flex-1 flex items-center justify-center">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <span className="ml-2 text-sm text-muted-foreground">Loading conversations...</span>
+              </div>
+            ) : activeSession.messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center">
                 <div className="text-center space-y-3">
                   <div className="mx-auto w-12 h-12 rounded-full bg-accent flex items-center justify-center">

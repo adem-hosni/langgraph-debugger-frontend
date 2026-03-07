@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { Loader2 } from "lucide-react";
 import { Paperclip, ArrowUp, X, FileCode, FileSpreadsheet, FileImage, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,7 @@ function formatSize(bytes: number): string {
 const fileTypeIcons = { code: FileCode, data: FileSpreadsheet, image: FileImage, document: File };
 
 export function ChatInput() {
-  const { sendMessage } = useChatContext();
+  const { sendMessage, isSending } = useChatContext();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -61,7 +62,7 @@ export function ChatInput() {
   const removeFile = (id: string) => setFiles((f) => f.filter((x) => x.id !== id));
 
   const handleSend = () => {
-    if (!text.trim() && files.length === 0) return;
+    if (isSending || (!text.trim() && files.length === 0)) return;
     const attachments: Attachment[] = files.map((f) => ({ name: f.name, type: f.type, size: f.size }));
     sendMessage(text.trim(), attachments);
     setText("");
@@ -153,10 +154,10 @@ export function ChatInput() {
             <Button
               size="icon"
               className="h-8 w-8 shrink-0 rounded-lg"
-              disabled={!text.trim() && files.length === 0}
+              disabled={isSending || (!text.trim() && files.length === 0)}
               onClick={handleSend}
             >
-              <ArrowUp className="h-4 w-4" />
+              {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowUp className="h-4 w-4" />}
             </Button>
           </div>
 
