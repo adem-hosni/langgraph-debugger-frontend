@@ -17,7 +17,7 @@ function ChatApp() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeView, setActiveView] = useState<"chat" | "graph">("chat");
   const { theme, cycle: toggleTheme } = useTheme();
-  const { activeSession } = useChatContext();
+  const { activeSession, isLoading } = useChatContext();
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
