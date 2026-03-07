@@ -32,7 +32,7 @@ function formatSize(bytes: number): string {
 const fileTypeIcons = { code: FileCode, data: FileSpreadsheet, image: FileImage, document: File };
 
 export function ChatInput() {
-  const { sendMessage } = useChatContext();
+  const { sendMessage, isSending } = useChatContext();
   const [text, setText] = useState("");
   const [files, setFiles] = useState<StagedFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);

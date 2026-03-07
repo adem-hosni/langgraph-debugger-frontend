@@ -4,33 +4,58 @@ import "reactflow/dist/style.css";
 import GraphNode from "./GraphNode";
 import { StateInspector } from "./StateInspector";
 import { ExecutionControls } from "./ExecutionControls";
-import { mockNodes, mockEdges, executionSteps, type GraphNodeData, type NodeStatus } from "@/lib/graph-data";
+import { type GraphNodeData, type NodeStatus } from "@/lib/graph-data";
+import mockApi, { type GraphData } from "@/lib/mock-api";
+import { Loader2 } from "lucide-react";
 
 const nodeTypes = { graphNode: GraphNode };
 
 export function GraphDebugger() {
-  const [currentStep, setCurrentStep] = useState(executionSteps.length - 1);
+  const [graphData, setGraphData] = useState<GraphData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedNode, setSelectedNode] = useState<{ id: string; data: GraphNodeData } | null>(null);
 
-  // Compute node statuses based on current step
+  // Fetch graph data from mock API
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoading(true);
+      const data = await mockApi.graph.fetch();
+      if (cancelled) return;
+      setGraphData(data);
+      setCurrentStep(data.executionSteps.length - 1);
+      setLoading(false);
+    }
+    load();
+    return () => { cancelled = true; };
+  }, []);
+
+  const steps = graphData?.executionSteps ?? [];
+
   const computedNodes = useMemo(() => {
-    return mockNodes.map((node) => {
-      const stepIdx = executionSteps.findIndex((s) => s.nodeId === node.id);
+    if (!graphData) return [];
+    return graphData.nodes.map((node) => {
+      const stepIdx = steps.findIndex((s) => s.nodeId === node.id);
       let status: NodeStatus = "idle";
       if (stepIdx >= 0 && stepIdx <= currentStep) {
-        status = executionSteps[stepIdx].status;
+        status = steps[stepIdx].status;
       }
       return { ...node, data: { ...node.data, status } };
     });
-  }, [currentStep]);
+  }, [graphData, currentStep, steps]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(mockEdges);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(graphData?.edges ?? []);
 
   useEffect(() => {
     setNodes(computedNodes);
   }, [computedNodes, setNodes]);
+
+  useEffect(() => {
+    if (graphData) setEdges(graphData.edges);
+  }, [graphData, setEdges]);
 
   // Auto-select error node
   useEffect(() => {
@@ -55,8 +80,8 @@ export function GraphDebugger() {
   }, []);
 
   const onStepForward = useCallback(() => {
-    setCurrentStep((s) => Math.min(executionSteps.length - 1, s + 1));
-  }, []);
+    setCurrentStep((s) => Math.min(steps.length - 1, s + 1));
+  }, [steps.length]);
 
   const onPlayPause = useCallback(() => {
     setIsPlaying((p) => !p);
@@ -64,13 +89,22 @@ export function GraphDebugger() {
 
   useEffect(() => {
     if (!isPlaying) return;
-    if (currentStep >= executionSteps.length - 1) {
+    if (currentStep >= steps.length - 1) {
       setIsPlaying(false);
       return;
     }
     const timer = setTimeout(() => setCurrentStep((s) => s + 1), 1000);
     return () => clearTimeout(timer);
-  }, [isPlaying, currentStep]);
+  }, [isPlaying, currentStep, steps.length]);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading graph data...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 flex min-h-0">
@@ -92,7 +126,7 @@ export function GraphDebugger() {
         </ReactFlow>
         <ExecutionControls
           currentStep={currentStep}
-          totalSteps={executionSteps.length}
+          totalSteps={steps.length}
           isPlaying={isPlaying}
           onReset={onReset}
           onStepBack={onStepBack}
