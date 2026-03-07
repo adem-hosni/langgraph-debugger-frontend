@@ -62,7 +62,7 @@ export function ChatInput() {
   const removeFile = (id: string) => setFiles((f) => f.filter((x) => x.id !== id));
 
   const handleSend = () => {
-    if (!text.trim() && files.length === 0) return;
+    if (isSending || (!text.trim() && files.length === 0)) return;
     const attachments: Attachment[] = files.map((f) => ({ name: f.name, type: f.type, size: f.size }));
     sendMessage(text.trim(), attachments);
     setText("");
