@@ -5,7 +5,8 @@ import GraphNode from "./GraphNode";
 import { StateInspector } from "./StateInspector";
 import { ExecutionControls } from "./ExecutionControls";
 import { type GraphNodeData, type NodeStatus } from "@/lib/graph-data";
-import mockApi, { type GraphData } from "@/lib/mock-api";
+import { type GraphData } from "@/lib/mock-api";
+import { useGraphWebSocket } from "@/hooks/use-graph-ws";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,19 +21,13 @@ export function GraphDebugger() {
   const [selectedNode, setSelectedNode] = useState<{ id: string; data: GraphNodeData } | null>(null);
   const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      setLoading(true);
-      const data = await mockApi.graph.fetch();
-      if (cancelled) return;
-      setGraphData(data);
-      setCurrentStep(data.executionSteps.length - 1);
-      setLoading(false);
-    }
-    load();
-    return () => { cancelled = true; };
+  const handleGraphData = useCallback((data: GraphData) => {
+    setGraphData(data);
+    setCurrentStep(data.executionSteps.length - 1);
+    setLoading(false);
   }, []);
+
+  const { send } = useGraphWebSocket(handleGraphData);
 
   const steps = graphData?.executionSteps ?? [];
 
@@ -49,6 +44,46 @@ export function GraphDebugger() {
       return next;
     });
   }, []);
+
+  const onReset = useCallback(() => {
+    setCurrentStep(0);
+    setIsPlaying(false);
+    setIsPaused(false);
+    setSelectedNode(null);
+    send("reset");
+  }, [send]);
+
+  const onStepBack = useCallback(() => {
+    setCurrentStep((s) => Math.max(0, s - 1));
+    setIsPaused(false);
+    send("step_back");
+  }, [send]);
+
+  const onStepForward = useCallback(() => {
+    setCurrentStep((s) => Math.min(steps.length - 1, s + 1));
+    setIsPaused(false);
+    send("step_forward");
+  }, [steps.length, send]);
+
+  const onPlayPause = useCallback(() => {
+    if (isPaused) {
+      setIsPaused(false);
+      setIsPlaying(true);
+      send("run");
+      return;
+    }
+    if (isPlaying) {
+      setIsPlaying(false);
+      send("pause");
+    } else {
+      setIsPlaying(true);
+      send("run");
+    }
+  }, [isPaused, isPlaying, send]);
+
+  const onRerunNode = useCallback((nodeId: string) => {
+    send("rerun_node", { nodeId });
+  }, [send]);
 
   const computedNodes = useMemo(() => {
     if (!graphData) return [];
@@ -91,46 +126,6 @@ export function GraphDebugger() {
 
   const onNodeClick = useCallback((_: React.MouseEvent, node: Node<GraphNodeData>) => {
     setSelectedNode({ id: node.id, data: node.data });
-  }, []);
-
-  const onReset = useCallback(() => {
-    setCurrentStep(0);
-    setIsPlaying(false);
-    setIsPaused(false);
-    setSelectedNode(null);
-  }, []);
-
-  const onStepBack = useCallback(() => {
-    setCurrentStep((s) => Math.max(0, s - 1));
-    setIsPaused(false);
-  }, []);
-
-  const onStepForward = useCallback(() => {
-    setCurrentStep((s) => Math.min(steps.length - 1, s + 1));
-    setIsPaused(false);
-  }, [steps.length]);
-
-  const onPlayPause = useCallback(async () => {
-    const result = isPaused ? await mockApi.graph.run() : await mockApi.graph.pause();
-    if (isPaused) {
-      setIsPaused(false);
-      setIsPlaying(true);
-      return;
-    }
-    setIsPlaying((p) => !p);
-    
-    if (result.status === "error") {
-      toast.error(result.message);
-    }
-  }, [isPaused]);
-
-  const onRerunNode = useCallback(async (nodeId: string) => {
-    const result = await mockApi.graph.rerunNode(nodeId);
-    if (result.status === "success") {
-      toast.success(result.message);
-    } else {
-      toast.error(result.message);
-    }
   }, []);
 
   // Auto-play with breakpoint support
