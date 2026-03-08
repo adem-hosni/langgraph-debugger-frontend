@@ -1,6 +1,6 @@
 /**
- * Mock API layer — simulates network latency and server responses.
- * Every function returns a Promise that resolves after a realistic delay.
+ * Real API layer — fetches data from the FastAPI server.
+ * Includes graceful fallbacks to mock data if the server endpoint is not yet implemented.
  */
 
 import {
@@ -12,14 +12,18 @@ import {
   type ChatMode,
   type Attachment,
 } from "./mock-data";
-import { mockNodes, mockEdges, executionSteps, type GraphNodeData } from "./graph-data";
+import {
+  mockNodes,
+  mockEdges,
+  executionSteps,
+  type GraphNodeData,
+} from "./graph-data";
 import type { Node, Edge } from "reactflow";
 
-// ─── helpers ────────────────────────────────────────────────────────
-const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const rand = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
+// --- API Configuration ---
+const API_BASE_URL = "http://127.0.0.1:2026";
 
-// ─── in-memory store (simulates server DB) ──────────────────────────
+// ─── in-memory store (simulates server DB for mock fallbacks) ────────
 let _sessions: ChatSession[] = structuredClone(initialSessions);
 let _models: AIModel[] = structuredClone(defaultModels);
 
@@ -31,32 +35,84 @@ function resetStore() {
 // ─── Chat Sessions API ─────────────────────────────────────────────
 
 export async function fetchSessions(): Promise<ChatSession[]> {
-  await delay(rand(200, 500));
-  return structuredClone(_sessions);
+  try {
+    const response = await fetch(`${API_BASE_URL}/history/threads`);
+    if (!response.ok) throw new Error("Endpoint not found");
+    return await response.json();
+  } catch (error) {
+    console.warn("Server /history/threads failed. Falling back to mock data.");
+    return structuredClone(_sessions);
+  }
 }
 
 export async function fetchSession(id: string): Promise<ChatSession | null> {
-  await delay(rand(100, 300));
-  const s = _sessions.find((s) => s.id === id);
-  return s ? structuredClone(s) : null;
+  try {
+    const response = await fetch(`${API_BASE_URL}/history/${id}`);
+    if (!response.ok) {
+      if (response.status === 404) return null;
+      throw new Error(`Server returned ${response.status}`);
+    }
+
+    const backendData = await response.json();
+    const messages: ChatMessage[] = [];
+    const historyList = backendData.history.reverse();
+
+    historyList.forEach((state: any, index: number) => {
+      if (state.values.input_text && index === 0) {
+        messages.push({
+          id: `user-${state.checkpoint_id}`,
+          role: "user",
+          content: state.values.input_text,
+          timestamp: state.created_at || "Just now",
+        });
+      }
+      if (state.values.result) {
+        messages.push({
+          id: `ai-${state.checkpoint_id}`,
+          role: "assistant",
+          content: state.values.result,
+          timestamp: state.created_at || "Just now",
+        });
+      }
+    });
+
+    return {
+      id: backendData.thread_id,
+      title:
+        messages.length > 0
+          ? messages[0].content.slice(0, 30) + "..."
+          : "Debug Thread",
+      date: "Today",
+      messages: messages,
+    };
+  } catch (error) {
+    console.warn(
+      `Failed to fetch session ${id} from server. Mocking fallback.`,
+    );
+    const s = _sessions.find((s) => s.id === id);
+    return s ? structuredClone(s) : null;
+  }
 }
 
 export async function createSession(): Promise<ChatSession> {
-  await delay(rand(150, 400));
   const session: ChatSession = {
     id: crypto.randomUUID(),
-    title: "New Chat",
+    title: "New Debug Thread",
     date: "Today",
     messages: [],
   };
-  _sessions.unshift(session);
-  return structuredClone(session);
+  return session;
 }
 
 export async function deleteSession(id: string): Promise<{ success: boolean }> {
-  await delay(rand(150, 350));
-  _sessions = _sessions.filter((s) => s.id !== id);
-  return { success: true };
+  try {
+    await fetch(`${API_BASE_URL}/history/${id}`, { method: "DELETE" });
+    return { success: true };
+  } catch (error) {
+    console.warn("Delete endpoint failed. Mocking deletion.");
+    _sessions = _sessions.filter((s) => s.id !== id);
+    return { success: true };
+  }
 }
 
 // ─── Messages API ───────────────────────────────────────────────────
@@ -75,92 +131,84 @@ export interface SendMessageResponse {
   updatedSessionTitle?: string;
 }
 
-/** Simulates streaming-style response with a realistic delay */
-export async function sendMessage(req: SendMessageRequest): Promise<SendMessageResponse> {
-  const { sessionId, content, attachments, model, mode } = req;
+export async function sendMessage(
+  req: SendMessageRequest,
+): Promise<SendMessageResponse> {
+  try {
+    // Assuming you will mount a REST router for chatting at /api/chat
+    const response = await fetch(`${API_BASE_URL}/chat/send`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
 
-  // Simulate network + LLM thinking time
-  await delay(rand(600, 1500));
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
 
-  const modelLabel =
-    _models.find((m) => m.value === model)?.label ?? model;
+    // Expecting the backend to return exactly the SendMessageResponse structure
+    return await response.json();
+  } catch (error) {
+    console.warn("Server /api/chat failed. Using simulated response.", error);
 
-  const userMsg: ChatMessage = {
-    id: crypto.randomUUID(),
-    role: "user",
-    content,
-    attachments: attachments?.length ? attachments : undefined,
-    timestamp: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-  };
-
-  const responseVariants: Record<ChatMode, string> = {
-    default: `I've processed your message using **${modelLabel}**.\n\n> ${content}\n\nHere's my analysis based on your input. This is a simulated response from the mock API.`,
-    thinking: `After careful step-by-step reasoning with **${modelLabel}**:\n\n1. I first parsed your query\n2. Then evaluated multiple angles\n3. Synthesised a conclusion\n\n> ${content}\n\nThis is the result of deep analysis mode.`,
-    research: `## Research Findings\n\nUsing **${modelLabel}** in research mode, I found the following:\n\n- **Source 1**: Relevant data point about "${content.slice(0, 30)}..."\n- **Source 2**: Supporting evidence from academic literature\n- **Source 3**: Industry report corroboration\n\n### Summary\nBased on cross-referencing multiple sources, the consensus is clear.`,
-    creative: `✨ *Channeling creative energy through **${modelLabel}**...*\n\nYour prompt "${content.slice(0, 30)}..." inspired the following:\n\n---\n\nImagine a world where every line of code tells a story, where functions dance like poetry, and variables hold the weight of meaning beyond their types.\n\n---\n\n*That's the creative take on your request.*`,
-    concise: `**${modelLabel}**: ${content.length > 50 ? content.slice(0, 50) + "..." : content} → Processed. Result ready.`,
-  };
-
-  const thinkingContent =
-    mode === "thinking" || mode === "research"
-      ? `Analyzing with ${modelLabel} in ${mode} mode...\n\n1. Parsing input: "${content.slice(0, 40)}"\n2. Evaluating context and prior messages\n3. Selecting optimal response strategy\n4. Generating structured output`
-      : undefined;
-
-  const aiMsg: ChatMessage = {
-    id: crypto.randomUUID(),
-    role: "assistant",
-    content: responseVariants[mode],
-    thinking: thinkingContent,
-    toolCalls:
-      mode === "research"
-        ? [
-            {
-              name: "Web Search",
-              icon: "globe",
-              status: "completed",
-              input: { query: content.slice(0, 50) },
-              output: { results_count: rand(3, 12), top_result: "Relevant finding" },
-            },
-          ]
-        : undefined,
-    timestamp: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-  };
-
-  // Update in-memory store
-  const session = _sessions.find((s) => s.id === sessionId);
-  let updatedSessionTitle: string | undefined;
-  if (session) {
-    if (session.messages.length === 0) {
-      updatedSessionTitle = content.slice(0, 40) + (content.length > 40 ? "..." : "");
-      session.title = updatedSessionTitle;
-    }
-    session.messages.push(userMsg, aiMsg);
+    // Mock fallback
+    const { sessionId, content } = req;
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    };
+    const aiMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "assistant",
+      content: "Simulated response (Backend unreachable)",
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      }),
+    };
+    return { userMessage: userMsg, assistantMessage: aiMsg };
   }
-
-  return { userMessage: userMsg, assistantMessage: aiMsg, updatedSessionTitle };
 }
 
 // ─── Models API ─────────────────────────────────────────────────────
 
 export async function fetchModels(): Promise<AIModel[]> {
-  await delay(rand(100, 300));
-  return structuredClone(_models);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/models`);
+    if (!response.ok) throw new Error("Failed to fetch models");
+    return await response.json();
+  } catch (error) {
+    console.warn("Server /api/models failed. Using default models.");
+    return structuredClone(_models);
+  }
 }
 
 export async function addModel(label: string): Promise<AIModel> {
-  await delay(rand(200, 400));
-  const value = label.toLowerCase().replace(/\s+/g, "-");
-  const existing = _models.find((m) => m.value === value);
-  if (existing) return structuredClone(existing);
-  const model: AIModel = { value, label, custom: true };
-  _models.push(model);
-  return structuredClone(model);
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/models`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label }),
+    });
+    if (!response.ok) throw new Error("Failed to add model");
+    return await response.json();
+  } catch (error) {
+    return _models[0]; // Fallback
+  }
 }
 
-export async function removeModel(value: string): Promise<{ success: boolean }> {
-  await delay(rand(100, 250));
-  _models = _models.filter((m) => m.value !== value);
-  return { success: true };
+export async function removeModel(
+  value: string,
+): Promise<{ success: boolean }> {
+  try {
+    await fetch(`${API_BASE_URL}/api/models/${value}`, { method: "DELETE" });
+    return { success: true };
+  } catch (error) {
+    return { success: true };
+  }
 }
 
 // ─── Graph Debugger API ─────────────────────────────────────────────
@@ -172,36 +220,84 @@ export interface GraphData {
 }
 
 export async function fetchGraphData(): Promise<GraphData> {
-  await delay(rand(300, 600));
-  return {
-    nodes: structuredClone(mockNodes),
-    edges: structuredClone(mockEdges),
-    executionSteps: structuredClone(executionSteps),
-  };
+  try {
+    // Make sure this matches the prefix in your FastAPI router.
+    // If you used prefix="/api/graph" in the python file, use /api/graph/info here.
+    const response = await fetch(`${API_BASE_URL}/graph/info`);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch graph data: ${response.status}`);
+    }
+
+    // The backend now returns the EXACT structure React Flow needs:
+    // { nodes: [...], edges: [...], executionSteps: [] }
+    const backendData: GraphData = await response.json();
+
+    return backendData;
+  } catch (error) {
+    console.warn(
+      "Server /api/graph/info failed. Using mock graph data.",
+      error,
+    );
+    return {
+      nodes: structuredClone(mockNodes),
+      edges: structuredClone(mockEdges),
+      executionSteps: structuredClone(executionSteps),
+    };
+  }
 }
 
-export async function rerunGraphNode(nodeId: string): Promise<{ status: "success" | "error"; message: string }> {
-  await delay(rand(500, 1200));
-  // Simulate random success/failure on retry
-  const success = Math.random() > 0.3;
-  return {
-    status: success ? "success" : "error",
-    message: success
-      ? `Node "${nodeId}" re-executed successfully.`
-      : `Node "${nodeId}" failed again: TimeoutError`,
-  };
+export async function rerunGraphNode(
+  nodeId: string,
+): Promise<{ status: "success" | "error"; message: string }> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/api/graph/node/${nodeId}/rerun`,
+      {
+        method: "POST",
+      },
+    );
+    const data = await response.json();
+    return {
+      status: data.status || "success",
+      message: data.message || "Node re-executed",
+    };
+  } catch (error) {
+    return {
+      status: "success",
+      message: "Mocked success (Backend unreachable)",
+    };
+  }
 }
 
-// ─── Health / Meta ──────────────────────────────────────────────────
+// ─── Health / Meta ─────────────────────────────────────────────────
 
-export async function healthCheck(): Promise<{ status: "ok"; latency: number; version: string }> {
-  const start = performance.now();
-  await delay(rand(50, 150));
-  return { status: "ok", latency: Math.round(performance.now() - start), version: "0.1.0-mock" };
+export async function healthCheck(): Promise<{
+  status: "ok";
+  latency: number;
+  version: string;
+}> {
+  try {
+    const start = performance.now();
+    const res = await fetch(`${API_BASE_URL}/health`);
+    const data = await res.json();
+    return {
+      status: "ok",
+      latency: Math.round(performance.now() - start),
+      version: data.version || "1.0.0",
+    };
+  } catch (error) {
+    return { status: "ok", latency: 0, version: "0.1.0-mock-fallback" };
+  }
 }
 
-export const mockApi = {
-  sessions: { fetch: fetchSessions, get: fetchSession, create: createSession, delete: deleteSession },
+export const api = {
+  sessions: {
+    fetch: fetchSessions,
+    get: fetchSession,
+    create: createSession,
+    delete: deleteSession,
+  },
   messages: { send: sendMessage },
   models: { fetch: fetchModels, add: addModel, remove: removeModel },
   graph: { fetch: fetchGraphData, rerunNode: rerunGraphNode },
@@ -209,4 +305,4 @@ export const mockApi = {
   _resetStore: resetStore,
 };
 
-export default mockApi;
+export default api;
