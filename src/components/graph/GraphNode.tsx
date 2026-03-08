@@ -1,6 +1,6 @@
 import { memo } from "react";
 import { Handle, Position, type NodeProps } from "reactflow";
-import { Play, Bot, Wrench, Square, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
+import { Play, Bot, Wrench, Square, CheckCircle2, AlertTriangle, Loader2, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GraphNodeData } from "@/lib/graph-data";
 
@@ -26,6 +26,25 @@ function GraphNode({ data, selected }: NodeProps<GraphNodeData>) {
       )}
     >
       {data.type !== "start" && <Handle type="target" position={Position.Top} className="!w-2.5 !h-2.5 !bg-muted-foreground !border-2 !border-card" />}
+
+      {/* Breakpoint indicator */}
+      {data.type !== "start" && data.type !== "end" && (
+        <button
+          className={cn(
+            "absolute -left-2.5 top-1/2 -translate-y-1/2 z-10 w-5 h-5 rounded-full flex items-center justify-center transition-all",
+            data.hasBreakpoint
+              ? "bg-destructive text-destructive-foreground shadow-sm shadow-destructive/30"
+              : "bg-muted text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted-foreground/20"
+          )}
+          onClick={(e) => {
+            e.stopPropagation();
+            data.onToggleBreakpoint?.(data.nodeId!);
+          }}
+          title={data.hasBreakpoint ? "Remove breakpoint" : "Add breakpoint"}
+        >
+          <Circle className={cn("h-2.5 w-2.5", data.hasBreakpoint && "fill-current")} />
+        </button>
+      )}
 
       <div className="flex items-center gap-2.5">
         <div className={cn("p-1.5 rounded-lg bg-muted", accent)}>
