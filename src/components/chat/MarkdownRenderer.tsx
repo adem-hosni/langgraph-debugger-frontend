@@ -55,7 +55,6 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
-      /*atomDark, coldarkCold, dark, darcula, duotoneDark*/
       <SyntaxHighlighter
         language={language}
         style={oneDark}
