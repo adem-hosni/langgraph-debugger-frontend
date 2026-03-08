@@ -9,7 +9,7 @@ import type { GraphNodeData } from "@/lib/graph-data";
 interface StateInspectorProps {
   node: { id: string; data: GraphNodeData } | null;
   onClose: () => void;
-  onRerun?: (nodeId: string) => Promise<void>;
+  onRerun?: (nodeId: string) => void;
 }
 
 function JsonViewer({ data }: { data: unknown; label: string }) {
