@@ -110,13 +110,18 @@ export function GraphDebugger() {
     setIsPaused(false);
   }, [steps.length]);
 
-  const onPlayPause = useCallback(() => {
+  const onPlayPause = useCallback(async () => {
+    const result = isPaused ? await mockApi.graph.run() : await mockApi.graph.pause();
     if (isPaused) {
       setIsPaused(false);
       setIsPlaying(true);
       return;
     }
     setIsPlaying((p) => !p);
+    
+    if (result.status === "error") {
+      toast.error(result.message);
+    }
   }, [isPaused]);
 
   const onRerunNode = useCallback(async (nodeId: string) => {

@@ -235,10 +235,7 @@ export async function fetchGraphData(): Promise<GraphData> {
 
     return backendData;
   } catch (error) {
-    console.warn(
-      "Server /graph/info failed. Using mock graph data.",
-      error,
-    );
+    console.warn("Server /graph/info failed. Using mock graph data.", error);
     return {
       nodes: structuredClone(mockNodes),
       edges: structuredClone(mockEdges),
@@ -247,16 +244,53 @@ export async function fetchGraphData(): Promise<GraphData> {
   }
 }
 
+export async function runGraph(): Promise<{
+  status: "success" | "error";
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/graph/run`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to run graph: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    return {
+      status: "error",
+      message: `Graph execution failed (Backend unreachable: ${error})`,
+    };
+  }
+}
+
+export async function pauseGraph(): Promise<{
+  status: "success" | "error";
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/graph/pause`, {
+      method: "POST",
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to run graph: ${response.status}`);
+    }
+    return await response.json();
+  } catch (error) {
+    return {
+      status: "error",
+      message: `Graph pause failed (Backend unreachable: ${error})`,
+    };
+  }
+}
+
 export async function rerunGraphNode(
   nodeId: string,
 ): Promise<{ status: "success" | "error"; message: string }> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/graph/node/${nodeId}/rerun`,
-      {
-        method: "POST",
-      },
-    );
+    const response = await fetch(`${API_BASE_URL}/graph/node/${nodeId}/rerun`, {
+      method: "POST",
+    });
     const data = await response.json();
     return {
       status: data.status || "success",
@@ -300,7 +334,12 @@ export const api = {
   },
   messages: { send: sendMessage },
   models: { fetch: fetchModels, add: addModel, remove: removeModel },
-  graph: { fetch: fetchGraphData, rerunNode: rerunGraphNode },
+  graph: {
+    fetch: fetchGraphData,
+    run: runGraph,
+    pause: pauseGraph,
+    rerunNode: rerunGraphNode,
+  },
   health: healthCheck,
   _resetStore: resetStore,
 };
