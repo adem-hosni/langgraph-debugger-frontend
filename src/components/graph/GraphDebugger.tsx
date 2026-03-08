@@ -7,6 +7,7 @@ import { ExecutionControls } from "./ExecutionControls";
 import { type GraphNodeData, type NodeStatus } from "@/lib/graph-data";
 import mockApi, { type GraphData } from "@/lib/mock-api";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 const nodeTypes = { graphNode: GraphNode };
 
@@ -15,9 +16,10 @@ export function GraphDebugger() {
   const [loading, setLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [selectedNode, setSelectedNode] = useState<{ id: string; data: GraphNodeData } | null>(null);
+  const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
-  // Fetch graph data from mock API
   useEffect(() => {
     let cancelled = false;
     async function load() {
@@ -34,6 +36,20 @@ export function GraphDebugger() {
 
   const steps = graphData?.executionSteps ?? [];
 
+  const toggleBreakpoint = useCallback((nodeId: string) => {
+    setBreakpoints((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+        toast.info(`Breakpoint removed from node`);
+      } else {
+        next.add(nodeId);
+        toast.info(`Breakpoint set on node`);
+      }
+      return next;
+    });
+  }, []);
+
   const computedNodes = useMemo(() => {
     if (!graphData) return [];
     return graphData.nodes.map((node) => {
@@ -42,9 +58,18 @@ export function GraphDebugger() {
       if (stepIdx >= 0 && stepIdx <= currentStep) {
         status = steps[stepIdx].status;
       }
-      return { ...node, data: { ...node.data, status } };
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          status,
+          hasBreakpoint: breakpoints.has(node.id),
+          onToggleBreakpoint: toggleBreakpoint,
+          nodeId: node.id,
+        },
+      };
     });
-  }, [graphData, currentStep, steps]);
+  }, [graphData, currentStep, steps, breakpoints, toggleBreakpoint]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(graphData?.edges ?? []);
@@ -57,7 +82,6 @@ export function GraphDebugger() {
     if (graphData) setEdges(graphData.edges);
   }, [graphData, setEdges]);
 
-  // Auto-select error node
   useEffect(() => {
     const errorNode = computedNodes.find((n) => n.data.status === "error");
     if (errorNode && !selectedNode) {
@@ -72,30 +96,56 @@ export function GraphDebugger() {
   const onReset = useCallback(() => {
     setCurrentStep(0);
     setIsPlaying(false);
+    setIsPaused(false);
     setSelectedNode(null);
   }, []);
 
   const onStepBack = useCallback(() => {
     setCurrentStep((s) => Math.max(0, s - 1));
+    setIsPaused(false);
   }, []);
 
   const onStepForward = useCallback(() => {
     setCurrentStep((s) => Math.min(steps.length - 1, s + 1));
+    setIsPaused(false);
   }, [steps.length]);
 
   const onPlayPause = useCallback(() => {
+    if (isPaused) {
+      setIsPaused(false);
+      setIsPlaying(true);
+      return;
+    }
     setIsPlaying((p) => !p);
+  }, [isPaused]);
+
+  const onRerunNode = useCallback(async (nodeId: string) => {
+    const result = await mockApi.graph.rerunNode(nodeId);
+    if (result.status === "success") {
+      toast.success(result.message);
+    } else {
+      toast.error(result.message);
+    }
   }, []);
 
+  // Auto-play with breakpoint support
   useEffect(() => {
-    if (!isPlaying) return;
+    if (!isPlaying || isPaused) return;
     if (currentStep >= steps.length - 1) {
       setIsPlaying(false);
       return;
     }
+    const nextStep = currentStep + 1;
+    const nextNodeId = steps[nextStep]?.nodeId;
+    if (nextNodeId && breakpoints.has(nextNodeId)) {
+      setIsPaused(true);
+      setIsPlaying(false);
+      toast.warning(`Paused at breakpoint: ${nextNodeId}`);
+      return;
+    }
     const timer = setTimeout(() => setCurrentStep((s) => s + 1), 1000);
     return () => clearTimeout(timer);
-  }, [isPlaying, currentStep, steps.length]);
+  }, [isPlaying, isPaused, currentStep, steps.length, steps, breakpoints]);
 
   if (loading) {
     return (
@@ -128,13 +178,15 @@ export function GraphDebugger() {
           currentStep={currentStep}
           totalSteps={steps.length}
           isPlaying={isPlaying}
+          isPaused={isPaused}
+          breakpointCount={breakpoints.size}
           onReset={onReset}
           onStepBack={onStepBack}
           onPlayPause={onPlayPause}
           onStepForward={onStepForward}
         />
       </div>
-      <StateInspector node={selectedNode} onClose={() => setSelectedNode(null)} />
+      <StateInspector node={selectedNode} onClose={() => setSelectedNode(null)} onRerun={onRerunNode} />
     </div>
   );
 }

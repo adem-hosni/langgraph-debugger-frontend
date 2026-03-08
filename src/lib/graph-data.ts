@@ -10,6 +10,9 @@ export interface GraphNodeData {
   output?: Record<string, unknown>;
   state?: Record<string, unknown>;
   error?: string;
+  hasBreakpoint?: boolean;
+  onToggleBreakpoint?: (nodeId: string) => void;
+  nodeId?: string;
 }
 
 export const mockNodes: Node<GraphNodeData>[] = [
