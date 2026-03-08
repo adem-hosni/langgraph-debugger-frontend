@@ -135,7 +135,7 @@ export async function sendMessage(
   req: SendMessageRequest,
 ): Promise<SendMessageResponse> {
   try {
-    // Assuming you will mount a REST router for chatting at /api/chat
+    // Assuming you will mount a REST router for chatting at /chat
     const response = await fetch(`${API_BASE_URL}/chat/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -147,7 +147,7 @@ export async function sendMessage(
     // Expecting the backend to return exactly the SendMessageResponse structure
     return await response.json();
   } catch (error) {
-    console.warn("Server /api/chat failed. Using simulated response.", error);
+    console.warn("Server /chat failed. Using simulated response.", error);
 
     // Mock fallback
     const { sessionId, content } = req;
@@ -177,18 +177,18 @@ export async function sendMessage(
 
 export async function fetchModels(): Promise<AIModel[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/models`);
+    const response = await fetch(`${API_BASE_URL}/models/fetch`);
     if (!response.ok) throw new Error("Failed to fetch models");
     return await response.json();
   } catch (error) {
-    console.warn("Server /api/models failed. Using default models.");
+    console.warn("Server /models failed. Using default models.");
     return structuredClone(_models);
   }
 }
 
 export async function addModel(label: string): Promise<AIModel> {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/models`, {
+    const response = await fetch(`${API_BASE_URL}/models/add`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ label }),
@@ -204,7 +204,7 @@ export async function removeModel(
   value: string,
 ): Promise<{ success: boolean }> {
   try {
-    await fetch(`${API_BASE_URL}/api/models/${value}`, { method: "DELETE" });
+    await fetch(`${API_BASE_URL}/models/remove/${value}`, { method: "DELETE" });
     return { success: true };
   } catch (error) {
     return { success: true };
@@ -222,7 +222,7 @@ export interface GraphData {
 export async function fetchGraphData(): Promise<GraphData> {
   try {
     // Make sure this matches the prefix in your FastAPI router.
-    // If you used prefix="/api/graph" in the python file, use /api/graph/info here.
+    // If you used prefix="/graph" in the python file, use /graph/info here.
     const response = await fetch(`${API_BASE_URL}/graph/info`);
 
     if (!response.ok) {
@@ -236,7 +236,7 @@ export async function fetchGraphData(): Promise<GraphData> {
     return backendData;
   } catch (error) {
     console.warn(
-      "Server /api/graph/info failed. Using mock graph data.",
+      "Server /graph/info failed. Using mock graph data.",
       error,
     );
     return {
@@ -252,7 +252,7 @@ export async function rerunGraphNode(
 ): Promise<{ status: "success" | "error"; message: string }> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/api/graph/node/${nodeId}/rerun`,
+      `${API_BASE_URL}/graph/node/${nodeId}/rerun`,
       {
         method: "POST",
       },
