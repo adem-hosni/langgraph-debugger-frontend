@@ -1,4 +1,4 @@
-import { X, Copy, Check, AlertTriangle } from "lucide-react";
+import { X, Copy, Check, AlertTriangle, RotateCcw, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,9 +9,10 @@ import type { GraphNodeData } from "@/lib/graph-data";
 interface StateInspectorProps {
   node: { id: string; data: GraphNodeData } | null;
   onClose: () => void;
+  onRerun?: (nodeId: string) => Promise<void>;
 }
 
-function JsonViewer({ data, label }: { data: unknown; label: string }) {
+function JsonViewer({ data }: { data: unknown; label: string }) {
   const [copied, setCopied] = useState(false);
   const json = JSON.stringify(data, null, 2);
 
@@ -33,11 +34,23 @@ function JsonViewer({ data, label }: { data: unknown; label: string }) {
   );
 }
 
-export function StateInspector({ node, onClose }: StateInspectorProps) {
+export function StateInspector({ node, onClose, onRerun }: StateInspectorProps) {
+  const [rerunning, setRerunning] = useState(false);
+
   if (!node) return null;
 
   const { data } = node;
   const statusColor = data.status === "success" ? "default" : data.status === "error" ? "destructive" : "secondary";
+
+  const handleRerun = async () => {
+    if (!onRerun) return;
+    setRerunning(true);
+    try {
+      await onRerun(node.id);
+    } finally {
+      setRerunning(false);
+    }
+  };
 
   return (
     <aside className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full animate-in slide-in-from-right-4 duration-200">
@@ -49,9 +62,23 @@ export function StateInspector({ node, onClose }: StateInspectorProps) {
             <Badge variant={statusColor} className="text-[10px] px-1.5 py-0 h-5">{data.status}</Badge>
           </div>
         </div>
-        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {data.type !== "start" && data.type !== "end" && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+              onClick={handleRerun}
+              disabled={rerunning}
+              title="Rerun this node"
+            >
+              {rerunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       {data.error && (
