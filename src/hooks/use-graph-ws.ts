@@ -30,8 +30,8 @@ export function useGraphWebSocket(onGraphData: WsMessageHandler) {
         } else if (msg.type === "error") {
           toast.error(msg.message);
         }
-      } catch {
-        console.warn("Failed to parse WS message", event.data);
+      } catch (error) {
+        console.warn(error);
       }
     };
 

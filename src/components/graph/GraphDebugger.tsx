@@ -1,10 +1,22 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
-import ReactFlow, { Background, Controls, useNodesState, useEdgesState, type Node } from "reactflow";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import ReactFlow, {
+  Background,
+  Controls,
+  useNodesState,
+  useEdgesState,
+  type Node,
+} from "reactflow";
 import "reactflow/dist/style.css";
 import GraphNode from "./GraphNode";
 import { StateInspector } from "./StateInspector";
 import { ExecutionControls } from "./ExecutionControls";
-import { type GraphNodeData, type NodeStatus } from "@/lib/graph-data";
+import {
+  mockEdges,
+  mockNodes,
+  executionSteps,
+  type GraphNodeData,
+  type NodeStatus,
+} from "@/lib/graph-data";
 import { type GraphData } from "@/lib/mock-api";
 import { useGraphWebSocket } from "@/hooks/use-graph-ws";
 import { Loader2 } from "lucide-react";
@@ -18,18 +30,27 @@ export function GraphDebugger() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<{ id: string; data: GraphNodeData } | null>(null);
+  const [selectedNode, setSelectedNode] = useState<{
+    id: string;
+    data: GraphNodeData;
+  } | null>(null);
   const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
   const handleGraphData = useCallback((data: GraphData) => {
     setGraphData(data);
+    // setGraphData({
+    //   nodes: mockNodes,
+    //   edges: mockEdges,
+    //   executionSteps: executionSteps,
+    // });
     setCurrentStep(data.executionSteps.length - 1);
     setLoading(false);
   }, []);
 
   const { send } = useGraphWebSocket(handleGraphData);
 
-  const steps = graphData?.executionSteps ?? [];
+  // Wrap the steps derivation in useMemo so it keeps the same memory reference!
+  const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
   const toggleBreakpoint = useCallback((nodeId: string) => {
     setBreakpoints((prev) => {
@@ -81,9 +102,12 @@ export function GraphDebugger() {
     }
   }, [isPaused, isPlaying, send]);
 
-  const onRerunNode = useCallback((nodeId: string) => {
-    send("rerun_node", { nodeId });
-  }, [send]);
+  const onRerunNode = useCallback(
+    (nodeId: string) => {
+      send("rerun_node", { nodeId });
+    },
+    [send],
+  );
 
   const computedNodes = useMemo(() => {
     if (!graphData) return [];
@@ -107,7 +131,9 @@ export function GraphDebugger() {
   }, [graphData, currentStep, steps, breakpoints, toggleBreakpoint]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(graphData?.edges ?? []);
+  const [edges, setEdges, onEdgesChange] = useEdgesState(
+    graphData?.edges ?? [],
+  );
 
   useEffect(() => {
     setNodes(computedNodes);
@@ -117,16 +143,33 @@ export function GraphDebugger() {
     if (graphData) setEdges(graphData.edges);
   }, [graphData, setEdges]);
 
+  const autoOpenedErrorRef = useRef<string | null>(null);
+
   useEffect(() => {
     const errorNode = computedNodes.find((n) => n.data.status === "error");
-    if (errorNode && !selectedNode) {
+
+    // Only auto-open if we haven't already opened the inspector for THIS specific error node
+    if (
+      errorNode &&
+      !selectedNode &&
+      autoOpenedErrorRef.current !== errorNode.id
+    ) {
       setSelectedNode({ id: errorNode.id, data: errorNode.data });
+      autoOpenedErrorRef.current = errorNode.id;
+    }
+
+    // Reset the tracker if the error is resolved
+    if (!errorNode) {
+      autoOpenedErrorRef.current = null;
     }
   }, [computedNodes, selectedNode]);
 
-  const onNodeClick = useCallback((_: React.MouseEvent, node: Node<GraphNodeData>) => {
-    setSelectedNode({ id: node.id, data: node.data });
-  }, []);
+  const onNodeClick = useCallback(
+    (_: React.MouseEvent, node: Node<GraphNodeData>) => {
+      setSelectedNode({ id: node.id, data: node.data });
+    },
+    [],
+  );
 
   // Auto-play with breakpoint support
   useEffect(() => {
@@ -151,7 +194,9 @@ export function GraphDebugger() {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">Loading graph data...</span>
+        <span className="ml-2 text-sm text-muted-foreground">
+          Loading graph data...
+        </span>
       </div>
     );
   }
@@ -186,7 +231,11 @@ export function GraphDebugger() {
           onStepForward={onStepForward}
         />
       </div>
-      <StateInspector node={selectedNode} onClose={() => setSelectedNode(null)} onRerun={onRerunNode} />
+      <StateInspector
+        node={selectedNode}
+        onClose={() => setSelectedNode(null)}
+        onRerun={onRerunNode}
+      />
     </div>
   );
 }
