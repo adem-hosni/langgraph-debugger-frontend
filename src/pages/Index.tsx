@@ -135,7 +135,7 @@ function ChatApp() {
             <ChatInput />
           </>
         ) : (
-          <div className="flex-1 animate-fade-in">
+          <div className="flex-1 flex min-h-0">
             <GraphDebugger />
           </div>
         )}
