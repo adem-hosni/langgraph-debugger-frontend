@@ -111,6 +111,24 @@
     background-color: hsl(var(--muted-foreground) / 0.3);
     border-radius: 3px;
   }
+
+  /* Staggered animation delay utility */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+
+  /* Shimmer gradient for loading states */
+  .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+  }
 }
 
 /* React Flow theme overrides */
@@ -132,4 +150,9 @@
 }
 .react-flow__node:hover {
   z-index: 10 !important;
+}
+
+/* Smooth transitions for theme switching */
+body, .bg-background, .bg-sidebar, .bg-card {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }

@@ -17,42 +17,53 @@ const statusConfig = {
   error: { icon: AlertCircle, label: "Error", className: "bg-destructive/10 text-destructive border-destructive/20" },
 };
 
-export function ToolCallBlock({ tool }: { tool: ToolCall }) {
+export function ToolCallBlock({ tool, index = 0 }: { tool: ToolCall; index?: number }) {
   const [open, setOpen] = useState(false);
   const Icon = iconMap[tool.icon];
   const status = statusConfig[tool.status];
   const StatusIcon = status.icon;
 
   return (
-    <div className="rounded-lg border bg-chat-tool my-2">
+    <div
+      className="rounded-lg border bg-chat-tool my-2 animate-fade-in-left overflow-hidden transition-all duration-300 hover:shadow-sm"
+      style={{ animationDelay: `${index * 0.1}s` }}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-accent/30 transition-colors rounded-lg"
+        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm hover:bg-accent/30 transition-all duration-200 rounded-lg group"
       >
-        <Icon className="h-4 w-4 text-accent-blue shrink-0" />
+        <Icon className="h-4 w-4 text-accent-blue shrink-0 group-hover:scale-110 transition-transform duration-200" />
         <span className="font-medium">{tool.name}</span>
-        <Badge variant="outline" className={cn("ml-auto text-xs gap-1 py-0.5", status.className)}>
+        <Badge variant="outline" className={cn("ml-auto text-xs gap-1 py-0.5 transition-all duration-200", status.className)}>
           <StatusIcon className={cn("h-3 w-3", tool.status === "running" && "animate-spin")} />
           {status.label}
         </Badge>
-        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0", open && "rotate-180")} />
+        <ChevronDown className={cn(
+          "h-3.5 w-3.5 text-muted-foreground transition-transform duration-300 shrink-0",
+          open && "rotate-180"
+        )} />
       </button>
-      {open && (
-        <div className="px-4 pb-3 space-y-2 border-t border-border/50 pt-3">
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">Input</p>
-            <pre className="text-xs bg-chat-code rounded-md p-3 overflow-x-auto font-mono">
-              {JSON.stringify(tool.input, null, 2)}
-            </pre>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1">Output</p>
-            <pre className="text-xs bg-chat-code rounded-md p-3 overflow-x-auto font-mono">
-              {JSON.stringify(tool.output, null, 2)}
-            </pre>
+      <div className={cn(
+        "grid transition-all duration-300 ease-in-out",
+        open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+      )}>
+        <div className="overflow-hidden">
+          <div className="px-4 pb-3 space-y-2 border-t border-border/50 pt-3">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Input</p>
+              <pre className="text-xs bg-chat-code rounded-md p-3 overflow-x-auto font-mono">
+                {JSON.stringify(tool.input, null, 2)}
+              </pre>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground mb-1">Output</p>
+              <pre className="text-xs bg-chat-code rounded-md p-3 overflow-x-auto font-mono">
+                {JSON.stringify(tool.output, null, 2)}
+              </pre>
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
