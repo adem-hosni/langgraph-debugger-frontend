@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
+import { dracula } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { Copy, Check } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -66,7 +66,7 @@ function CodeBlock({ language, code }: { language: string; code: string }) {
       </div>
       <SyntaxHighlighter
         language={language}
-        style={oneDark}
+        style={dracula}
         customStyle={{ margin: 0, borderRadius: 0, fontSize: "0.8125rem" }}
       >
         {code}
