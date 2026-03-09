@@ -16,8 +16,8 @@ export function useGraphWebSocket(onGraphData: WsMessageHandler) {
 
     ws.onopen = () => {
       setConnected(true);
-      // Request initial graph data
-      ws.send(JSON.stringify({ action: "fetch" }));
+      // Request initial graph data with all node states
+      ws.send(JSON.stringify({ action: "fetch", include_states: true }));
     };
 
     ws.onmessage = (event) => {

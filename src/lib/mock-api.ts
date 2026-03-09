@@ -221,17 +221,38 @@ export interface GraphData {
 
 export async function fetchGraphData(): Promise<GraphData> {
   try {
-    // Make sure this matches the prefix in your FastAPI router.
-    // If you used prefix="/graph" in the python file, use /graph/info here.
-    const response = await fetch(`${API_BASE_URL}/graph/info`);
+    // Fetch graph structure and node states in parallel
+    const [graphResponse, statesResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/graph/info`),
+      fetch(`${API_BASE_URL}/graph/states`).catch(() => null),
+    ]);
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch graph data: ${response.status}`);
+    if (!graphResponse.ok) {
+      throw new Error(`Failed to fetch graph data: ${graphResponse.status}`);
     }
 
-    // The backend now returns the EXACT structure React Flow needs:
-    // { nodes: [...], edges: [...], executionSteps: [] }
-    const backendData: GraphData = await response.json();
+    const backendData: GraphData = await graphResponse.json();
+
+    // Merge node states if the states endpoint returned data
+    if (statesResponse && statesResponse.ok) {
+      const statesData: Record<string, { input?: Record<string, unknown>; output?: Record<string, unknown>; state?: Record<string, unknown>; error?: string }> = await statesResponse.json();
+      backendData.nodes = backendData.nodes.map((node) => {
+        const nodeState = statesData[node.id];
+        if (nodeState) {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              input: nodeState.input ?? node.data.input,
+              output: nodeState.output ?? node.data.output,
+              state: nodeState.state ?? node.data.state,
+              error: nodeState.error ?? node.data.error,
+            },
+          };
+        }
+        return node;
+      });
+    }
 
     return backendData;
   } catch (error) {
