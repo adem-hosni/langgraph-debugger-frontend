@@ -119,7 +119,17 @@
 }
 .react-flow__edge-path {
   stroke-width: 2;
+  transition: stroke 0.3s ease;
 }
 .react-flow__controls button {
   border-radius: calc(var(--radius) - 4px);
+}
+.react-flow__minimap {
+  border-radius: var(--radius) !important;
+}
+.react-flow__node {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.react-flow__node:hover {
+  z-index: 10 !important;
 }

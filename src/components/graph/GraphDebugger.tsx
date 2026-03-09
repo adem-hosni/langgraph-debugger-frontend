@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import ReactFlow, {
   Background,
   Controls,
+  MiniMap,
   useNodesState,
   useEdgesState,
   type Node,
@@ -11,9 +12,6 @@ import GraphNode from "./GraphNode";
 import { StateInspector } from "./StateInspector";
 import { ExecutionControls } from "./ExecutionControls";
 import {
-  mockEdges,
-  mockNodes,
-  executionSteps,
   type GraphNodeData,
   type NodeStatus,
 } from "@/lib/graph-data";
@@ -30,26 +28,17 @@ export function GraphDebugger() {
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [selectedNode, setSelectedNode] = useState<{
-    id: string;
-    data: GraphNodeData;
-  } | null>(null);
+  const [selectedNode, setSelectedNode] = useState<{ id: string; data: GraphNodeData } | null>(null);
   const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
   const handleGraphData = useCallback((data: GraphData) => {
     setGraphData(data);
-    // setGraphData({
-    //   nodes: mockNodes,
-    //   edges: mockEdges,
-    //   executionSteps: executionSteps,
-    // });
     setCurrentStep(data.executionSteps.length - 1);
     setLoading(false);
   }, []);
 
-  const { send } = useGraphWebSocket(handleGraphData);
+  const { send, connected } = useGraphWebSocket(handleGraphData);
 
-  // Wrap the steps derivation in useMemo so it keeps the same memory reference!
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
   const toggleBreakpoint = useCallback((nodeId: string) => {
@@ -57,13 +46,18 @@ export function GraphDebugger() {
       const next = new Set(prev);
       if (next.has(nodeId)) {
         next.delete(nodeId);
-        toast.info(`Breakpoint removed from node`);
+        toast.info("Breakpoint removed");
       } else {
         next.add(nodeId);
-        toast.info(`Breakpoint set on node`);
+        toast.info("Breakpoint set");
       }
       return next;
     });
+  }, []);
+
+  const clearBreakpoints = useCallback(() => {
+    setBreakpoints(new Set());
+    toast.info("All breakpoints cleared");
   }, []);
 
   const onReset = useCallback(() => {
@@ -102,12 +96,27 @@ export function GraphDebugger() {
     }
   }, [isPaused, isPlaying, send]);
 
-  const onRerunNode = useCallback(
-    (nodeId: string) => {
-      send("rerun_node", { nodeId });
-    },
-    [send],
-  );
+  const onRerunNode = useCallback((nodeId: string) => { send("rerun_node", { nodeId }); }, [send]);
+
+  const onUpdateState = useCallback((nodeId: string, state: Record<string, unknown>) => {
+    send("update_state", { nodeId, state });
+  }, [send]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLInputElement) return;
+      switch (e.key) {
+        case " ": e.preventDefault(); onPlayPause(); break;
+        case "ArrowLeft": e.preventDefault(); onStepBack(); break;
+        case "ArrowRight": e.preventDefault(); onStepForward(); break;
+        case "r": case "R": if (!e.metaKey && !e.ctrlKey) { e.preventDefault(); onReset(); } break;
+        case "Escape": setSelectedNode(null); break;
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [onPlayPause, onStepBack, onStepForward, onReset]);
 
   const computedNodes = useMemo(() => {
     if (!graphData) return [];
@@ -131,53 +140,30 @@ export function GraphDebugger() {
   }, [graphData, currentStep, steps, breakpoints, toggleBreakpoint]);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(computedNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(
-    graphData?.edges ?? [],
-  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState(graphData?.edges ?? []);
 
-  useEffect(() => {
-    setNodes(computedNodes);
-  }, [computedNodes, setNodes]);
-
-  useEffect(() => {
-    if (graphData) setEdges(graphData.edges);
-  }, [graphData, setEdges]);
+  useEffect(() => { setNodes(computedNodes); }, [computedNodes, setNodes]);
+  useEffect(() => { if (graphData) setEdges(graphData.edges); }, [graphData, setEdges]);
 
   const autoOpenedErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
     const errorNode = computedNodes.find((n) => n.data.status === "error");
-
-    // Only auto-open if we haven't already opened the inspector for THIS specific error node
-    if (
-      errorNode &&
-      !selectedNode &&
-      autoOpenedErrorRef.current !== errorNode.id
-    ) {
+    if (errorNode && !selectedNode && autoOpenedErrorRef.current !== errorNode.id) {
       setSelectedNode({ id: errorNode.id, data: errorNode.data });
       autoOpenedErrorRef.current = errorNode.id;
     }
-
-    // Reset the tracker if the error is resolved
-    if (!errorNode) {
-      autoOpenedErrorRef.current = null;
-    }
+    if (!errorNode) autoOpenedErrorRef.current = null;
   }, [computedNodes, selectedNode]);
 
-  const onNodeClick = useCallback(
-    (_: React.MouseEvent, node: Node<GraphNodeData>) => {
-      setSelectedNode({ id: node.id, data: node.data });
-    },
-    [],
-  );
+  const onNodeClick = useCallback((_: React.MouseEvent, node: Node<GraphNodeData>) => {
+    setSelectedNode({ id: node.id, data: node.data });
+  }, []);
 
   // Auto-play with breakpoint support
   useEffect(() => {
     if (!isPlaying || isPaused) return;
-    if (currentStep >= steps.length - 1) {
-      setIsPlaying(false);
-      return;
-    }
+    if (currentStep >= steps.length - 1) { setIsPlaying(false); return; }
     const nextStep = currentStep + 1;
     const nextNodeId = steps[nextStep]?.nodeId;
     if (nextNodeId && breakpoints.has(nextNodeId)) {
@@ -192,11 +178,9 @@ export function GraphDebugger() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">
-          Loading graph data...
-        </span>
+      <div className="flex-1 flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-accent-blue" />
+        <span className="text-sm text-muted-foreground">Connecting to graph service…</span>
       </div>
     );
   }
@@ -218,6 +202,19 @@ export function GraphDebugger() {
         >
           <Background gap={20} size={1} className="opacity-30" />
           <Controls className="!bg-card !border-border !shadow-md [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted" />
+          <MiniMap
+            nodeColor={(n) => {
+              const d = n.data as GraphNodeData;
+              if (d.status === "error") return "hsl(0 84% 60%)";
+              if (d.status === "success") return "hsl(142 71% 45%)";
+              if (d.status === "running") return "hsl(217 91% 60%)";
+              return "hsl(var(--muted-foreground))";
+            }}
+            maskColor="hsl(var(--background) / 0.7)"
+            className="!bg-card/80 !border-border !rounded-lg !shadow-md"
+            pannable
+            zoomable
+          />
         </ReactFlow>
         <ExecutionControls
           currentStep={currentStep}
@@ -225,16 +222,19 @@ export function GraphDebugger() {
           isPlaying={isPlaying}
           isPaused={isPaused}
           breakpointCount={breakpoints.size}
+          connected={connected}
           onReset={onReset}
           onStepBack={onStepBack}
           onPlayPause={onPlayPause}
           onStepForward={onStepForward}
+          onClearBreakpoints={clearBreakpoints}
         />
       </div>
       <StateInspector
         node={selectedNode}
         onClose={() => setSelectedNode(null)}
         onRerun={onRerunNode}
+        onUpdateState={onUpdateState}
       />
     </div>
   );
