@@ -17,13 +17,13 @@ function TypingIndicator() {
   return (
     <div className="py-6 px-4 md:px-0 animate-fade-in">
       <div className="max-w-3xl mx-auto flex gap-4">
-        <div className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center mt-0.5 bg-accent-blue/10">
+        <div className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center mt-0.5 bg-accent-blue/10">
           <Sparkles className="h-4 w-4 text-accent-blue" />
         </div>
         <div className="flex items-center gap-1.5 pt-2">
-          <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-typing-dot" />
-          <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-typing-dot" style={{ animationDelay: "0.2s" }} />
-          <span className="w-2 h-2 rounded-full bg-muted-foreground/40 animate-typing-dot" style={{ animationDelay: "0.4s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/50 animate-typing-dot" />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/50 animate-typing-dot" style={{ animationDelay: "0.2s" }} />
+          <span className="w-1.5 h-1.5 rounded-full bg-accent-blue/50 animate-typing-dot" style={{ animationDelay: "0.4s" }} />
         </div>
       </div>
     </div>
@@ -63,13 +63,13 @@ function ChatApp() {
 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation Bar */}
-        <header className="h-12 shrink-0 flex items-center px-3 border-b border-border animate-fade-in backdrop-blur-sm bg-background/80">
+        <header className="h-12 shrink-0 flex items-center px-3 border-b border-border/50 animate-fade-in bg-background">
           <div className="flex items-center gap-2 min-w-[140px]">
             {activeView === "chat" && (
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 transition-all duration-200 hover:rotate-0"
+                className="h-8 w-8 transition-all duration-200 rounded-lg"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
               >
                 <div className="transition-transform duration-300" style={{ transform: sidebarOpen ? "rotateY(0deg)" : "rotateY(180deg)" }}>
@@ -82,7 +82,7 @@ function ChatApp() {
 
           <div className="flex-1 flex justify-center">
             <Tabs value={activeView} onValueChange={(v) => setActiveView(v as "chat" | "graph")}>
-              <TabsList className="h-8">
+              <TabsList className="h-8 bg-muted/50">
                 <TabsTrigger value="chat" className="text-xs px-4 h-7 transition-all duration-200 data-[state=active]:shadow-sm">Chat View</TabsTrigger>
                 <TabsTrigger value="graph" className="text-xs px-4 h-7 transition-all duration-200 data-[state=active]:shadow-sm">Graph Debugger</TabsTrigger>
               </TabsList>
@@ -92,7 +92,7 @@ function ChatApp() {
           <div className="flex items-center gap-2 min-w-[140px] justify-end">
             {activeView === "chat" && <ModelSelector />}
             {activeView === "graph" && (
-              <Button size="sm" className="h-8 gap-1.5 text-xs transition-all duration-200 hover:shadow-md active:scale-95">
+              <Button size="sm" className="h-8 gap-1.5 text-xs transition-all duration-200 hover:shadow-md active:scale-95 rounded-lg">
                 <Rocket className="h-3.5 w-3.5" />
                 Deploy
               </Button>
@@ -111,12 +111,12 @@ function ChatApp() {
             ) : activeSession.messages.length === 0 ? (
               <div className="flex-1 flex items-center justify-center animate-fade-in-up">
                 <div className="text-center space-y-4">
-                  <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue/20 to-accent-blue/5 flex items-center justify-center animate-glow-pulse">
+                  <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-accent-blue/15 to-accent-blue/5 flex items-center justify-center animate-glow-pulse">
                     <MessageSquare className="h-7 w-7 text-accent-blue" />
                   </div>
                   <div className="space-y-2">
                     <h2 className="text-xl font-semibold tracking-tight">How can I help you today?</h2>
-                    <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+                    <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">
                       Start a conversation by typing a message below, or upload files to analyze.
                     </p>
                   </div>
@@ -124,7 +124,7 @@ function ChatApp() {
               </div>
             ) : (
               <ScrollArea className="flex-1 scrollbar-thin" ref={scrollRef}>
-                <div className="divide-y divide-border/30">
+                <div className="divide-y divide-border/20">
                   {activeSession.messages.map((msg, i) => (
                     <ChatMessage key={msg.id} message={msg} index={i} />
                   ))}
