@@ -5,8 +5,12 @@ import type { GraphData } from "@/lib/mock-api";
 const WS_URL = "ws://127.0.0.1:2026/ws/graph";
 
 type WsMessageHandler = (data: GraphData) => void;
+type NodeStateUpdateHandler = (nodeId: string, state: Record<string, unknown>) => void;
 
-export function useGraphWebSocket(onGraphData: WsMessageHandler) {
+export function useGraphWebSocket(
+  onGraphData: WsMessageHandler,
+  onNodeStateUpdate?: NodeStateUpdateHandler,
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
