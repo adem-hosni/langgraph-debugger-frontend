@@ -235,7 +235,15 @@ export async function fetchGraphData(): Promise<GraphData> {
 
     // Merge node states if the states endpoint returned data
     if (statesResponse && statesResponse.ok) {
-      const statesData: Record<string, { input?: Record<string, unknown>; output?: Record<string, unknown>; state?: Record<string, unknown>; error?: string }> = await statesResponse.json();
+      const statesData: Record<
+        string,
+        {
+          input?: Record<string, unknown>;
+          output?: Record<string, unknown>;
+          state?: Record<string, unknown>;
+          error?: string;
+        }
+      > = await statesResponse.json();
       backendData.nodes = backendData.nodes.map((node) => {
         const nodeState = statesData[node.id];
         if (nodeState) {
@@ -346,6 +354,67 @@ export async function healthCheck(): Promise<{
   }
 }
 
+export async function setBreakpoint(
+  nodeId: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/graph/breakpoints/${nodeId}`,
+      {
+        method: "POST",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to set breakpoint: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    return {
+      success: true,
+      message: `Mocked set breakpoint for ${nodeId} (Backend unreachable)`,
+    };
+  }
+}
+
+export async function removeBreakpoint(
+  nodeId: string,
+): Promise<{ success: boolean; message: string }> {
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/graph/breakpoints/${nodeId}`,
+      {
+        method: "DELETE",
+      },
+    );
+    if (!response.ok)
+      throw new Error(`Failed to remove breakpoint: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    return {
+      success: true,
+      message: `Mocked remove breakpoint for ${nodeId} (Backend unreachable)`,
+    };
+  }
+}
+
+export async function clearAllBreakpoints(): Promise<{
+  success: boolean;
+  message: string;
+}> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/graph/breakpoints`, {
+      method: "DELETE",
+    });
+    if (!response.ok)
+      throw new Error(`Failed to clear breakpoints: ${response.status}`);
+    return await response.json();
+  } catch (error) {
+    return {
+      success: true,
+      message: "Mocked clear all breakpoints (Backend unreachable)",
+    };
+  }
+}
+
 export const api = {
   sessions: {
     fetch: fetchSessions,
@@ -360,6 +429,9 @@ export const api = {
     run: runGraph,
     pause: pauseGraph,
     rerunNode: rerunGraphNode,
+    setBreakpoint,
+    removeBreakpoint,
+    clearAllBreakpoints,
   },
   health: healthCheck,
   _resetStore: resetStore,
