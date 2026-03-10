@@ -83,8 +83,8 @@ function JsonViewer({ data, editable, onSave }: { data: unknown; label: string; 
             value={editValue}
             onChange={(e) => { setEditValue(e.target.value); setParseError(null); }}
             className={cn(
-              "w-full min-h-[200px] max-h-[400px] text-xs font-mono rounded-lg p-4 bg-muted/50 text-foreground border resize-y focus:outline-none focus:ring-2 focus:ring-ring",
-              parseError ? "border-destructive focus:ring-destructive" : "border-border"
+              "w-full min-h-[200px] max-h-[400px] text-xs font-mono rounded-lg p-4 bg-muted/30 text-foreground border resize-y focus:outline-none focus:ring-2 focus:ring-ring",
+              parseError ? "border-destructive focus:ring-destructive" : "border-border/50"
             )}
             spellCheck={false}
           />
@@ -95,7 +95,7 @@ function JsonViewer({ data, editable, onSave }: { data: unknown; label: string; 
           )}
         </div>
       ) : (
-        <pre className="text-xs font-mono bg-muted/50 rounded-lg p-4 overflow-auto whitespace-pre-wrap text-foreground max-h-[400px] transition-colors">
+        <pre className="text-xs font-mono bg-muted/30 rounded-lg p-4 overflow-auto whitespace-pre-wrap text-foreground/80 max-h-[400px] transition-colors border border-border/20">
           {json}
         </pre>
       )}
@@ -111,7 +111,13 @@ export function StateInspector({ node, onClose, onRerun, onUpdateState }: StateI
 
   const { data } = node;
   const statusColor = data.status === "success" ? "default" : data.status === "error" ? "destructive" : "secondary";
-  const statusDot = data.status === "running" ? "bg-accent-blue animate-pulse" : data.status === "success" ? "bg-accent-green" : data.status === "error" ? "bg-destructive" : "bg-muted-foreground/40";
+  const statusDot = data.status === "running"
+    ? "bg-accent-blue shadow-[0_0_6px_hsl(var(--accent-blue)/0.4)] animate-pulse"
+    : data.status === "success"
+      ? "bg-accent-green shadow-[0_0_6px_hsl(var(--accent-green)/0.3)]"
+      : data.status === "error"
+        ? "bg-destructive shadow-[0_0_6px_hsl(var(--destructive)/0.3)]"
+        : "bg-muted-foreground/30";
 
   const handleRerun = async () => {
     if (!onRerun) return;
@@ -128,19 +134,19 @@ export function StateInspector({ node, onClose, onRerun, onUpdateState }: StateI
   };
 
   return (
-    <aside className="w-80 shrink-0 border-l border-border bg-card flex flex-col h-full animate-in slide-in-from-right-4 duration-200">
-      <div className="p-4 border-b border-border">
+    <aside className="w-80 shrink-0 border-l border-border/50 bg-card flex flex-col h-full animate-in slide-in-from-right-4 duration-200">
+      <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", statusDot)} />
+          <div className="flex items-center gap-2.5">
+            <div className={cn("w-2 h-2 rounded-full shrink-0 transition-all", statusDot)} />
             <h3 className="text-sm font-semibold text-card-foreground truncate">{data.label}</h3>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <TooltipProvider delayDuration={300}>
               {data.type !== "start" && data.type !== "end" && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={handleRerun} disabled={rerunning}>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg" onClick={handleRerun} disabled={rerunning}>
                       {rerunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                     </Button>
                   </TooltipTrigger>
@@ -149,7 +155,7 @@ export function StateInspector({ node, onClose, onRerun, onUpdateState }: StateI
               )}
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg" onClick={onClose}>
                     <X className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
@@ -158,22 +164,22 @@ export function StateInspector({ node, onClose, onRerun, onUpdateState }: StateI
             </TooltipProvider>
           </div>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant={statusColor} className="text-[10px] px-1.5 py-0 h-5">{data.status}</Badge>
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-muted-foreground">{data.type}</Badge>
+        <div className="flex items-center gap-1.5 mt-2.5">
+          <Badge variant={statusColor} className="text-[10px] px-1.5 py-0 h-5 font-mono">{data.status}</Badge>
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-muted-foreground font-mono">{data.type}</Badge>
           {data.hasBreakpoint && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5">breakpoint</Badge>
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-5 font-mono">breakpoint</Badge>
           )}
         </div>
       </div>
 
       {data.error && (
-        <div className="mx-4 mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 animate-in fade-in-50 duration-300">
+        <div className="mx-4 mt-3 p-3 rounded-lg bg-destructive/5 border border-destructive/15 animate-in fade-in-50 duration-300">
           <div className="flex items-center gap-1.5 mb-2">
             <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-            <span className="text-xs font-semibold text-destructive">Error Stack Trace</span>
+            <span className="text-[11px] font-semibold text-destructive font-mono uppercase tracking-wider">Error Stack Trace</span>
           </div>
-          <pre className="text-[11px] font-mono text-destructive/80 whitespace-pre-wrap">{data.error}</pre>
+          <pre className="text-[11px] font-mono text-destructive/70 whitespace-pre-wrap leading-relaxed">{data.error}</pre>
         </div>
       )}
 
@@ -182,9 +188,9 @@ export function StateInspector({ node, onClose, onRerun, onUpdateState }: StateI
           <TabsTrigger value="input" className="text-xs">Input</TabsTrigger>
           <TabsTrigger value="output" className="text-xs">Output</TabsTrigger>
           <TabsTrigger value="state" className="text-xs relative">
-            Current State
+            State
             {data.type !== "start" && data.type !== "end" && (
-              <Pencil className="h-2.5 w-2.5 ml-1 text-muted-foreground" />
+              <Pencil className="h-2.5 w-2.5 ml-1 text-muted-foreground/50" />
             )}
           </TabsTrigger>
         </TabsList>
