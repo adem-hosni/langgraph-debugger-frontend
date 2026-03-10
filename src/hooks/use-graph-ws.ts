@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import { toast } from "sonner";
 import type { GraphData } from "@/lib/mock-api";
+import { GraphNodeData } from "@/lib/graph-data";
 
 const WS_URL = "ws://127.0.0.1:2026/ws/graph";
 
 type WsMessageHandler = (data: GraphData) => void;
-type NodeStateUpdateHandler = (nodeId: string, state: Record<string, unknown>) => void;
+type NodeStateUpdateHandler = (nodeId: string, state: Partial<GraphNodeData>) => void;
 
 export function useGraphWebSocket(
   onGraphData: WsMessageHandler,
@@ -30,7 +31,7 @@ export function useGraphWebSocket(
         if (msg.type === "graph_data") {
           onGraphData(msg.data);
         } else if (msg.type === "node_state_update") {
-          onNodeStateUpdate?.(msg.nodeId, msg.state);
+          onNodeStateUpdate?.(msg.nodeId, msg.data);
         } else if (msg.type === "status") {
           toast.info(msg.message);
         } else if (msg.type === "error") {
