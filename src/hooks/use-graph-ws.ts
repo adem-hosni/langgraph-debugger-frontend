@@ -5,8 +5,12 @@ import type { GraphData } from "@/lib/mock-api";
 const WS_URL = "ws://127.0.0.1:2026/ws/graph";
 
 type WsMessageHandler = (data: GraphData) => void;
+type NodeStateUpdateHandler = (nodeId: string, state: Record<string, unknown>) => void;
 
-export function useGraphWebSocket(onGraphData: WsMessageHandler) {
+export function useGraphWebSocket(
+  onGraphData: WsMessageHandler,
+  onNodeStateUpdate?: NodeStateUpdateHandler,
+) {
   const wsRef = useRef<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
@@ -25,6 +29,8 @@ export function useGraphWebSocket(onGraphData: WsMessageHandler) {
         const msg = JSON.parse(event.data);
         if (msg.type === "graph_data") {
           onGraphData(msg.data);
+        } else if (msg.type === "node_state_update") {
+          onNodeStateUpdate?.(msg.nodeId, msg.state);
         } else if (msg.type === "status") {
           toast.info(msg.message);
         } else if (msg.type === "error") {
@@ -47,7 +53,7 @@ export function useGraphWebSocket(onGraphData: WsMessageHandler) {
     return () => {
       ws.close();
     };
-  }, [onGraphData]);
+  }, [onGraphData, onNodeStateUpdate]);
 
   const send = useCallback((action: string, payload?: Record<string, unknown>) => {
     const ws = wsRef.current;
