@@ -40,16 +40,6 @@ export function GraphDebugger() {
 
   const { send, connected } = useGraphWebSocket(handleGraphData);
 
-  // Fetch initial graph state via REST when component mounts (tab switch)
-  useEffect(() => {
-    let cancelled = false;
-    import("@/lib/mock-api").then(({ fetchGraphData }) =>
-      fetchGraphData().then((data) => {
-        if (!cancelled) handleGraphData(data);
-      })
-    ).catch(console.warn);
-    return () => { cancelled = true; };
-  }, [handleGraphData]);
 
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
