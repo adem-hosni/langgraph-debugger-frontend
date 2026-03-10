@@ -58,12 +58,5 @@ export function useGraphWebSocket(onGraphData: WsMessageHandler) {
     }
   }, []);
 
-  const updateNodeState = useCallback(
-    (nodeId: string, state: Record<string, unknown>) => {
-      send("update_state", { nodeId, state });
-    },
-    [send],
-  );
-
-  return { send, connected, updateNodeState };
+  return { send, connected };
 }
