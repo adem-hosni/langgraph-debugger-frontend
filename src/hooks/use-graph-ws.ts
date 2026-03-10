@@ -29,6 +29,8 @@ export function useGraphWebSocket(
         const msg = JSON.parse(event.data);
         if (msg.type === "graph_data") {
           onGraphData(msg.data);
+        } else if (msg.type === "node_state_update") {
+          onNodeStateUpdate?.(msg.nodeId, msg.state);
         } else if (msg.type === "status") {
           toast.info(msg.message);
         } else if (msg.type === "error") {

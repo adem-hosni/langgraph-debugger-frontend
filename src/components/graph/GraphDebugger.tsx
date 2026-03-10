@@ -38,7 +38,19 @@ export function GraphDebugger() {
     setLoading(false);
   }, []);
 
-  const { send, connected } = useGraphWebSocket(handleGraphData);
+  const handleNodeStateUpdate = useCallback((nodeId: string, state: Record<string, unknown>) => {
+    setGraphData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        nodes: prev.nodes.map((n) =>
+          n.id === nodeId ? { ...n, data: { ...n.data, state } } : n
+        ),
+      };
+    });
+  }, []);
+
+  const { send, connected } = useGraphWebSocket(handleGraphData, handleNodeStateUpdate);
 
 
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
