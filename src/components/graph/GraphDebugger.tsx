@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import api from "@/lib/mock-api";
 import ReactFlow, {
   Background,
   Controls,
@@ -44,7 +45,7 @@ export function GraphDebugger() {
         return {
           ...prev,
           nodes: prev.nodes.map((n) =>
-            n.id === nodeId
+            n.nodeId === nodeId
               ? { ...n, data: { ...n.data, ...newData } }
               : n,
           ),
@@ -57,28 +58,6 @@ export function GraphDebugger() {
     handleGraphData,
     handleNodeStateUpdate,
   );
-
-  const animatedEdges = useMemo(() => {
-    if (!graphData) return false;
-    return graphData.edges.some((e) => e.animated);
-  }, [graphData]);
-
-  useEffect(() => {
-    if (!graphData || !animatedEdges) return;
-
-    const styleSheet = document.createElement("style");
-    styleSheet.type = "text/css";
-    styleSheet.innerText = `
-      .react-flow__edge-path[style*="dasharray"] {
-        animation: dash-flow 1s linear infinite;
-      }
-    `;
-    document.head.appendChild(styleSheet);
-
-    return () => {
-      document.head.removeChild(styleSheet);
-    };
-  }, [graphData, animatedEdges]);
 
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
@@ -294,18 +273,18 @@ export function GraphDebugger() {
           proOptions={{ hideAttribution: true }}
           className="bg-background"
         >
-          <Background gap={24} size={1} className="opacity-[0.15]" />
-          <Controls className="!bg-card !border-border/50 !shadow-elevated !rounded-xl [&>button]:!bg-card [&>button]:!border-border/30 [&>button]:!text-muted-foreground [&>button:hover]:!bg-accent [&>button:hover]:!text-foreground" />
+          <Background gap={20} size={1} className="opacity-30" />
+          <Controls className="!bg-card !border-border !shadow-md [&>button]:!bg-card [&>button]:!border-border [&>button]:!text-foreground [&>button:hover]:!bg-muted" />
           <MiniMap
             nodeColor={(n) => {
               const d = n.data as GraphNodeData;
-              if (d.status === "error") return "hsl(0 72% 51%)";
-              if (d.status === "success") return "hsl(152 76% 44%)";
+              if (d.status === "error") return "hsl(0 84% 60%)";
+              if (d.status === "success") return "hsl(142 71% 45%)";
               if (d.status === "running") return "hsl(217 91% 60%)";
-              return "hsl(var(--muted-foreground) / 0.3)";
+              return "hsl(var(--muted-foreground))";
             }}
-            maskColor="hsl(var(--background) / 0.8)"
-            className="!bg-card/60 !backdrop-blur-sm !border-border/30 !rounded-xl !shadow-elevated"
+            maskColor="hsl(var(--background) / 0.7)"
+            className="!bg-card/80 !border-border !rounded-lg !shadow-md"
             pannable
             zoomable
           />

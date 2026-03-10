@@ -87,7 +87,7 @@ export function ChatInput() {
   };
 
   return (
-    <div className="px-4 pb-4 pt-2 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
+    <div className="bg-background px-4 py-3 animate-fade-in-up" style={{ animationDelay: "0.1s" }}>
       <div className="max-w-3xl mx-auto">
         {files.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-2">
@@ -114,20 +114,20 @@ export function ChatInput() {
 
         <div
           className={cn(
-            "flex flex-col bg-chat-input rounded-2xl border transition-all duration-300",
+            "flex flex-col bg-chat-input rounded-xl border transition-all duration-300",
             isDragging && "border-accent-blue ring-2 ring-accent-blue/20 scale-[1.01]",
-            isFocused && !isDragging && "border-ring/30 ring-2 ring-accent-blue/15 shadow-float",
-            !isFocused && !isDragging && "shadow-elevated hover:shadow-float border-border/60"
+            isFocused && !isDragging && "border-border ring-1 ring-ring/20 shadow-lg shadow-background",
+            !isFocused && !isDragging && "shadow-sm hover:shadow-md"
           )}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <div className="flex items-end gap-2 px-4 py-3">
+          <div className="flex items-end gap-2 px-3 py-2">
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground transition-all duration-200"
+              className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground transition-all duration-200 hover:rotate-12"
               onClick={() => fileInputRef.current?.click()}
             >
               <Paperclip className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function ChatInput() {
               onBlur={() => setIsFocused(false)}
               placeholder="Message AI..."
               rows={1}
-              className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 py-1.5 max-h-[200px] scrollbar-thin"
+              className="flex-1 resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground py-1.5 max-h-[200px] scrollbar-thin"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -164,10 +164,10 @@ export function ChatInput() {
             <Button
               size="icon"
               className={cn(
-                "h-8 w-8 shrink-0 rounded-xl transition-all duration-300",
+                "h-8 w-8 shrink-0 rounded-lg transition-all duration-300",
                 text.trim() || files.length > 0
-                  ? "opacity-100 scale-100 bg-accent-blue hover:bg-accent-blue/90 text-white"
-                  : "opacity-30 scale-95"
+                  ? "opacity-100 scale-100"
+                  : "opacity-50 scale-95"
               )}
               disabled={isSending || (!text.trim() && files.length === 0)}
               onClick={handleSend}
@@ -176,12 +176,12 @@ export function ChatInput() {
             </Button>
           </div>
 
-          <div className="flex items-center px-4 pb-2.5 gap-1">
+          <div className="flex items-center px-3 pb-2 gap-1">
             <ModeSelector />
           </div>
         </div>
 
-        <p className="text-[11px] text-center text-muted-foreground/40 mt-2.5 transition-opacity duration-300">
+        <p className="text-xs text-center text-muted-foreground mt-2 transition-opacity duration-300">
           AI can make mistakes. Verify important information.
         </p>
       </div>
