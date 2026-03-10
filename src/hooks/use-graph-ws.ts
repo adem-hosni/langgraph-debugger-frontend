@@ -53,7 +53,7 @@ export function useGraphWebSocket(
     return () => {
       ws.close();
     };
-  }, [onGraphData]);
+  }, [onGraphData, onNodeStateUpdate]);
 
   const send = useCallback((action: string, payload?: Record<string, unknown>) => {
     const ws = wsRef.current;
