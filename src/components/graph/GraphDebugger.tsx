@@ -1,5 +1,4 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import api from "@/lib/mock-api";
 import ReactFlow, {
   Background,
   Controls,
@@ -32,32 +31,33 @@ export function GraphDebugger() {
   } | null>(null);
   const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
-  const handleGraphData = useCallback((data: GraphData) => {
-    setGraphData(data);
-    setCurrentStep(data.executionSteps.length - 1);
-    setLoading(false);
-  }, []);
+  const { send, connected, subscribe, subscribeNodeState } = useGraphWebSocket();
 
-  const handleNodeStateUpdate = useCallback(
-    (nodeId: string, newData: Partial<GraphNodeData>) => {
+  // Subscribe to graph data
+  useEffect(() => {
+    return subscribe((data: GraphData) => {
+      setGraphData(data);
+      setCurrentStep(data.executionSteps.length - 1);
+      setLoading(false);
+    });
+  }, [subscribe]);
+
+  // Subscribe to node state updates
+  useEffect(() => {
+    return subscribeNodeState((nodeId: string, newData: Partial<GraphNodeData>) => {
       setGraphData((prev) => {
         if (!prev) return prev;
         return {
           ...prev,
           nodes: prev.nodes.map((n) =>
-            n.nodeId === nodeId
+            n.id === nodeId
               ? { ...n, data: { ...n.data, ...newData } }
               : n,
           ),
         };
       });
-    },
-    [],
-  );
-  const { send, connected } = useGraphWebSocket(
-    handleGraphData,
-    handleNodeStateUpdate,
-  );
+    });
+  }, [subscribeNodeState]);
 
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
