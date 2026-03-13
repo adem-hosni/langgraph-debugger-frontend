@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { GraphData } from "@/lib/mock-api";
 import { GraphNodeData } from "@/lib/graph-data";
@@ -71,7 +71,7 @@ export function useGraphWsProvider() {
       ws.onopen = () => {
         setConnected(true);
         reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
-        ws.send(JSON.stringify({ action: "fetch", include_states: true }));
+        // ws.send(JSON.stringify({ action: "fetch", include_states: true }));
       };
 
       ws.onmessage = (event) => {
@@ -128,32 +128,38 @@ export function useGraphWsProvider() {
     };
   }, []);
 
-  const send = (action: string, payload?: Record<string, unknown>) => {
+const send = useCallback(
+  (action: string, payload?: Record<string, unknown>) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action, ...payload }));
       return;
     }
     toast.error("WebSocket not connected");
-  };
+  },
+  [],
+);
 
-  const updateNodeState = (nodeId: string, state: Record<string, unknown>) => {
+const updateNodeState = useCallback(
+  (nodeId: string, state: Record<string, unknown>) => {
     send("update_state", { nodeId, state });
-  };
+  },
+  [send],
+);
 
-  const subscribe = (handler: WsMessageHandler) => {
-    graphHandlersRef.current.add(handler);
-    return () => {
-      graphHandlersRef.current.delete(handler);
-    };
+const subscribe = useCallback((handler: WsMessageHandler) => {
+  graphHandlersRef.current.add(handler);
+  return () => {
+    graphHandlersRef.current.delete(handler);
   };
+}, []);
 
-  const subscribeNodeState = (handler: NodeStateUpdateHandler) => {
-    nodeStateHandlersRef.current.add(handler);
-    return () => {
-      nodeStateHandlersRef.current.delete(handler);
-    };
+const subscribeNodeState = useCallback((handler: NodeStateUpdateHandler) => {
+  nodeStateHandlersRef.current.add(handler);
+  return () => {
+    nodeStateHandlersRef.current.delete(handler);
   };
+}, []);
 
   return { connected, send, updateNodeState, subscribe, subscribeNodeState };
 }

@@ -31,7 +31,8 @@ export function GraphDebugger() {
   } | null>(null);
   const [breakpoints, setBreakpoints] = useState<Set<string>>(new Set());
 
-  const { send, connected, subscribe, subscribeNodeState } = useGraphWebSocket();
+  const { send, connected, subscribe, subscribeNodeState } =
+    useGraphWebSocket();
 
   // Subscribe to graph data
   useEffect(() => {
@@ -42,21 +43,27 @@ export function GraphDebugger() {
     });
   }, [subscribe]);
 
+  useEffect(() => {
+    if (connected) {
+      send("fetch", { include_states: true });
+    }
+  }, [connected, send]);
+
   // Subscribe to node state updates
   useEffect(() => {
-    return subscribeNodeState((nodeId: string, newData: Partial<GraphNodeData>) => {
-      setGraphData((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          nodes: prev.nodes.map((n) =>
-            n.id === nodeId
-              ? { ...n, data: { ...n.data, ...newData } }
-              : n,
-          ),
-        };
-      });
-    });
+    return subscribeNodeState(
+      (nodeId: string, newData: Partial<GraphNodeData>) => {
+        setGraphData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nodes: prev.nodes.map((n) =>
+              n.data.nodeId === nodeId ? { ...n, data: { ...n.data, ...newData } } : n,
+            ),
+          };
+        });
+      },
+    );
   }, [subscribeNodeState]);
 
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
@@ -65,8 +72,23 @@ export function GraphDebugger() {
     (nodeId: string) => {
       setBreakpoints((prev) => {
         const next = new Set(prev);
+        setGraphData((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            nodes: prev.nodes.map((n) =>
+              n.id === nodeId
+                ? {
+                    ...n,
+                    data: { ...n.data, hasBreakpoint: !next.has(nodeId) },
+                  }
+                : n,
+            ),
+          };
+        });
         if (next.has(nodeId)) {
           next.delete(nodeId);
+
           send("remove_breakpoint", { nodeId });
           toast.info("Breakpoint removed");
         } else {
@@ -185,8 +207,8 @@ export function GraphDebugger() {
         ...node,
         data: {
           ...node.data,
-          status,
-          hasBreakpoint: breakpoints.has(node.id),
+          status: node.data.status,
+          hasBreakpoint: node.data.hasBreakpoint,
           onToggleBreakpoint: toggleBreakpoint,
           nodeId: node.id,
         },
