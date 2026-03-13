@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useCallback, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { GraphData } from "@/lib/mock-api";
 import { GraphNodeData } from "@/lib/graph-data";
@@ -22,107 +22,138 @@ export const GraphWsContext = createContext<GraphWsContextValue | null>(null);
 
 export function useGraphWsProvider() {
   const wsRef = useRef<WebSocket | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectDelayRef = useRef(INITIAL_RECONNECT_DELAY);
+  const intentionalCloseRef = useRef(false);
+
+  const graphHandlersRef = useRef<Set<WsMessageHandler>>(new Set());
+  const nodeStateHandlersRef = useRef<Set<NodeStateUpdateHandler>>(new Set());
+
   const [connected, setConnected] = useState(false);
-  const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const intentionalClose = useRef(false);
-  const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
-  const connectRef = useRef<() => void>();
-
-  const graphHandlers = useRef<Set<WsMessageHandler>>(new Set());
-  const nodeStateHandlers = useRef<Set<NodeStateUpdateHandler>>(new Set());
-
-  const scheduleReconnect = useCallback(() => {
-    if (intentionalClose.current || reconnectTimer.current) return;
-    const delay = reconnectDelay.current;
-    reconnectDelay.current = Math.min(delay * 1.5, MAX_RECONNECT_DELAY);
-    reconnectTimer.current = setTimeout(() => {
-      reconnectTimer.current = null;
-      connectRef.current?.();
-    }, delay);
-  }, []);
-
-  const connect = useCallback(() => {
-    if (wsRef.current) {
-      const state = wsRef.current.readyState;
-      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
-      wsRef.current.onclose = null;
-      wsRef.current.onerror = null;
-      wsRef.current = null;
-    }
-
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      setConnected(true);
-      reconnectDelay.current = INITIAL_RECONNECT_DELAY;
-      ws.send(JSON.stringify({ action: "fetch", include_states: true }));
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === "graph_data") {
-          graphHandlers.current.forEach((h) => h(msg.data));
-        } else if (msg.type === "node_state_update") {
-          nodeStateHandlers.current.forEach((h) => h(msg.nodeId, msg.data));
-        } else if (msg.type === "status") {
-          toast.info(msg.message);
-        } else if (msg.type === "error") {
-          toast.error(msg.message);
-        }
-      } catch (error) {
-        console.warn(error);
-      }
-    };
-
-    ws.onclose = () => {
-      setConnected(false);
-      wsRef.current = null;
-      scheduleReconnect();
-    };
-
-    ws.onerror = () => {
-      // onclose always fires after onerror, so reconnect is handled there
-    };
-  }, [scheduleReconnect]);
-
-  // Keep ref in sync so scheduleReconnect can call connect without circular deps
-  connectRef.current = connect;
 
   useEffect(() => {
-    intentionalClose.current = false;
+    intentionalCloseRef.current = false;
+
+    const scheduleReconnect = () => {
+      if (intentionalCloseRef.current || reconnectTimerRef.current) return;
+
+      const delay = reconnectDelayRef.current;
+      reconnectDelayRef.current = Math.min(
+        Math.round(delay * 1.5),
+        MAX_RECONNECT_DELAY,
+      );
+
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        connect();
+      }, delay);
+    };
+
+    const connect = () => {
+      const existing = wsRef.current;
+      if (existing) {
+        if (
+          existing.readyState === WebSocket.OPEN ||
+          existing.readyState === WebSocket.CONNECTING
+        ) {
+          return;
+        }
+        existing.onopen = null;
+        existing.onmessage = null;
+        existing.onclose = null;
+        existing.onerror = null;
+        wsRef.current = null;
+      }
+
+      const ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setConnected(true);
+        reconnectDelayRef.current = INITIAL_RECONNECT_DELAY;
+        ws.send(JSON.stringify({ action: "fetch", include_states: true }));
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === "graph_data") {
+            graphHandlersRef.current.forEach((handler) => handler(msg.data));
+          } else if (msg.type === "node_state_update") {
+            nodeStateHandlersRef.current.forEach((handler) =>
+              handler(msg.nodeId, msg.data),
+            );
+          } else if (msg.type === "status") {
+            toast.info(msg.message);
+          } else if (msg.type === "error") {
+            toast.error(msg.message);
+          }
+        } catch (error) {
+          console.warn(error);
+        }
+      };
+
+      ws.onerror = () => {
+        setConnected(false);
+      };
+
+      ws.onclose = () => {
+        setConnected(false);
+        if (wsRef.current === ws) wsRef.current = null;
+        scheduleReconnect();
+      };
+    };
+
     connect();
 
     return () => {
-      intentionalClose.current = true;
-      if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
-      wsRef.current?.close();
-    };
-  }, [connect]);
+      intentionalCloseRef.current = true;
 
-  const send = useCallback((action: string, payload?: Record<string, unknown>) => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+
+      const ws = wsRef.current;
+      wsRef.current = null;
+      if (ws) {
+        ws.onopen = null;
+        ws.onmessage = null;
+        ws.onclose = null;
+        ws.onerror = null;
+        ws.close();
+      }
+
+      setConnected(false);
+    };
+  }, []);
+
+  const send = (action: string, payload?: Record<string, unknown>) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({ action, ...payload }));
-    } else {
-      toast.error("WebSocket not connected");
+      return;
     }
-  }, []);
+    toast.error("WebSocket not connected");
+  };
 
-  const updateNodeState = useCallback((nodeId: string, state: Record<string, unknown>) => {
+  const updateNodeState = (nodeId: string, state: Record<string, unknown>) => {
     send("update_state", { nodeId, state });
-  }, [send]);
+  };
 
-  const subscribe = useCallback((handler: WsMessageHandler) => {
-    graphHandlers.current.add(handler);
-    return () => { graphHandlers.current.delete(handler); };
-  }, []);
+  const subscribe = (handler: WsMessageHandler) => {
+    graphHandlersRef.current.add(handler);
+    return () => {
+      graphHandlersRef.current.delete(handler);
+    };
+  };
 
-  const subscribeNodeState = useCallback((handler: NodeStateUpdateHandler) => {
-    nodeStateHandlers.current.add(handler);
-    return () => { nodeStateHandlers.current.delete(handler); };
-  }, []);
+  const subscribeNodeState = (handler: NodeStateUpdateHandler) => {
+    nodeStateHandlersRef.current.add(handler);
+    return () => {
+      nodeStateHandlersRef.current.delete(handler);
+    };
+  };
 
   return { connected, send, updateNodeState, subscribe, subscribeNodeState };
 }
