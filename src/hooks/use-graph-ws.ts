@@ -26,6 +26,7 @@ export function useGraphWsProvider() {
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalClose = useRef(false);
   const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
+  const connectRef = useRef<() => void>();
 
   const graphHandlers = useRef<Set<WsMessageHandler>>(new Set());
   const nodeStateHandlers = useRef<Set<NodeStateUpdateHandler>>(new Set());
@@ -36,16 +37,14 @@ export function useGraphWsProvider() {
     reconnectDelay.current = Math.min(delay * 1.5, MAX_RECONNECT_DELAY);
     reconnectTimer.current = setTimeout(() => {
       reconnectTimer.current = null;
-      connect();
+      connectRef.current?.();
     }, delay);
   }, []);
 
   const connect = useCallback(() => {
-    // Clean up any existing socket first
     if (wsRef.current) {
       const state = wsRef.current.readyState;
       if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
-      // Remove handlers from stale CLOSING sockets to prevent double-reconnect
       wsRef.current.onclose = null;
       wsRef.current.onerror = null;
       wsRef.current = null;
@@ -56,7 +55,7 @@ export function useGraphWsProvider() {
 
     ws.onopen = () => {
       setConnected(true);
-      reconnectDelay.current = INITIAL_RECONNECT_DELAY; // reset backoff
+      reconnectDelay.current = INITIAL_RECONNECT_DELAY;
       ws.send(JSON.stringify({ action: "fetch", include_states: true }));
     };
 
@@ -84,9 +83,13 @@ export function useGraphWsProvider() {
     };
 
     ws.onerror = () => {
-      // onerror is always followed by onclose, so just let onclose handle reconnect
+      // onclose always fires after onerror, so reconnect is handled there
     };
   }, [scheduleReconnect]);
+
+  // Keep ref in sync so scheduleReconnect can call connect without circular deps
+  connectRef.current = connect;
+
   useEffect(() => {
     intentionalClose.current = false;
     connect();
