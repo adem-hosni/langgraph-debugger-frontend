@@ -4,7 +4,8 @@ import type { GraphData } from "@/lib/mock-api";
 import { GraphNodeData } from "@/lib/graph-data";
 
 const WS_URL = "ws://127.0.0.1:2026/ws/graph";
-const RECONNECT_DELAY = 3000;
+const INITIAL_RECONNECT_DELAY = 2000;
+const MAX_RECONNECT_DELAY = 30000;
 
 export type WsMessageHandler = (data: GraphData) => void;
 export type NodeStateUpdateHandler = (nodeId: string, state: Partial<GraphNodeData>) => void;
@@ -24,13 +25,30 @@ export function useGraphWsProvider() {
   const [connected, setConnected] = useState(false);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intentionalClose = useRef(false);
+  const reconnectDelay = useRef(INITIAL_RECONNECT_DELAY);
 
   const graphHandlers = useRef<Set<WsMessageHandler>>(new Set());
   const nodeStateHandlers = useRef<Set<NodeStateUpdateHandler>>(new Set());
 
+  const scheduleReconnect = useCallback(() => {
+    if (intentionalClose.current || reconnectTimer.current) return;
+    const delay = reconnectDelay.current;
+    reconnectDelay.current = Math.min(delay * 1.5, MAX_RECONNECT_DELAY);
+    reconnectTimer.current = setTimeout(() => {
+      reconnectTimer.current = null;
+      connect();
+    }, delay);
+  }, []);
+
   const connect = useCallback(() => {
-    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
-      return;
+    // Clean up any existing socket first
+    if (wsRef.current) {
+      const state = wsRef.current.readyState;
+      if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return;
+      // Remove handlers from stale CLOSING sockets to prevent double-reconnect
+      wsRef.current.onclose = null;
+      wsRef.current.onerror = null;
+      wsRef.current = null;
     }
 
     const ws = new WebSocket(WS_URL);
@@ -38,6 +56,7 @@ export function useGraphWsProvider() {
 
     ws.onopen = () => {
       setConnected(true);
+      reconnectDelay.current = INITIAL_RECONNECT_DELAY; // reset backoff
       ws.send(JSON.stringify({ action: "fetch", include_states: true }));
     };
 
@@ -60,16 +79,14 @@ export function useGraphWsProvider() {
 
     ws.onclose = () => {
       setConnected(false);
-      if (!intentionalClose.current) {
-        reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY);
-      }
+      wsRef.current = null;
+      scheduleReconnect();
     };
 
     ws.onerror = () => {
-      setConnected(false);
+      // onerror is always followed by onclose, so just let onclose handle reconnect
     };
-  }, []);
-
+  }, [scheduleReconnect]);
   useEffect(() => {
     intentionalClose.current = false;
     connect();
