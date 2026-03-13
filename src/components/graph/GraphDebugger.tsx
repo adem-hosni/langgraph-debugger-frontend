@@ -50,22 +50,26 @@ export function GraphDebugger() {
   }, [connected, send]);
 
   // Subscribe to node state updates
+// Subscribe to node state updates
   useEffect(() => {
     return subscribeNodeState(
       (nodeId: string, newData: Partial<GraphNodeData>) => {
         setGraphData((prev) => {
           if (!prev) return prev;
+          console.log(nodeId)
           return {
             ...prev,
             nodes: prev.nodes.map((n) =>
-              n.data.nodeId === nodeId ? { ...n, data: { ...n.data, ...newData } } : n,
+              // FIX: Use n.id instead of n.data.nodeId
+              n.id === nodeId
+                ? { ...n, data: { ...n.data, ...newData } }
+                : n,
             ),
           };
         });
       },
     );
   }, [subscribeNodeState]);
-
   const steps = useMemo(() => graphData?.executionSteps ?? [], [graphData]);
 
   const toggleBreakpoint = useCallback(
